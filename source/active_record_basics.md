@@ -1,6 +1,6 @@
 **DO NOT READ THIS FILE ON GITHUB, GUIDES ARE PUBLISHED ON http://guides.rubyonrails.org.**
 
-Active Record Basics
+Active Record 基礎
 ====================
 
 This guide is an introduction to Active Record.
