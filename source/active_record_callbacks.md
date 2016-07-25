@@ -1,34 +1,37 @@
 **DO NOT READ THIS FILE ON GITHUB, GUIDES ARE PUBLISHED ON http://guides.rubyonrails.org.**
 
-Active Record Callbacks
+Active Record 回呼
 =======================
 
-This guide teaches you how to hook into the life cycle of your Active Record
-objects.
+本篇講解了如何掛載是見到 Active Record 物件的生命週期。
 
-After reading this guide, you will know:
+讀完本篇，您將了解：
 
-* The life cycle of Active Record objects.
-* How to create callback methods that respond to events in the object life cycle.
-* How to create special classes that encapsulate common behavior for your callbacks.
+* Active Record 物件的生命週期。
+* 如何建立回呼方法 (callback method) 來回應物件生命週期中的事件。
+* 如何建立特殊的類別來封裝回呼常見的行為。
 
 --------------------------------------------------------------------------------
 
-The Object Life Cycle
+1 物件的生命週期
 ---------------------
 
-During the normal operation of a Rails application, objects may be created, updated, and destroyed. Active Record provides hooks into this *object life cycle* so that you can control your application and its data.
+在操作 Rails 應用程式時，經常會新建、更新、或是刪除物件。Active Record 提供了掛載事件到物件生命週期的機制，讓您控制應用程式與資料。
 
-Callbacks allow you to trigger logic before or after an alteration of an object's state.
 
-Callbacks Overview
+回呼可以讓您在更改物件狀態的前後，觸發特定的程式碼。
+
+
+2 回呼綜覽
 ------------------
 
-Callbacks are methods that get called at certain moments of an object's life cycle. With callbacks it is possible to write code that will run whenever an Active Record object is created, saved, updated, deleted, validated, or loaded from the database.
+回呼是一種方法，在物件生命週期中的特定時間點被呼叫。使用回呼，就可以在 Active Record 物件被新建、儲存、更新、刪除、驗證、或從資料庫中載入的時候來執行特定的程式碼。
 
-### Callback Registration
 
-In order to use the available callbacks, you need to register them. You can implement the callbacks as ordinary methods and use a macro-style class method to register them as callbacks:
+### 2.1 註冊回呼
+
+在使用回呼前要先註冊才行。您可以將回呼看作是一般方法來寫，然後使用巨集風格類別方法 (macro-style class method) 來註冊為回呼：
+
 
 ```ruby
 class User < ApplicationRecord
@@ -45,7 +48,8 @@ class User < ApplicationRecord
 end
 ```
 
-The macro-style class methods can also receive a block. Consider using this style if the code inside your block is so short that it fits in a single line:
+巨集風格類別方法也接受區塊，若回呼程式碼只有一行那麼短，就可以使用區塊形式：
+
 
 ```ruby
 class User < ApplicationRecord
@@ -57,7 +61,8 @@ class User < ApplicationRecord
 end
 ```
 
-Callbacks can also be registered to only fire on certain life cycle events:
+回呼也可以針對特定的生命週期事件來觸發：
+
 
 ```ruby
 class User < ApplicationRecord
@@ -77,14 +82,16 @@ class User < ApplicationRecord
 end
 ```
 
-It is considered good practice to declare callback methods as protected or private. If left public, they can be called from outside of the model and violate the principle of object encapsulation.
+一般會建議將回呼方法宣告為 protected 或 private。若宣告為 public 方法，就可以從 model 外呼叫它們，這違反了物件封裝的精神。 
 
-Available Callbacks
+
+3 可用的回呼
 -------------------
 
-Here is a list with all the available Active Record callbacks, listed in the same order in which they will get called during the respective operations:
+以下是所有可用的 Active Record 回呼，依照每一次執行中被呼叫的順序來排序：
 
-### Creating an Object
+
+### 3.1 新建物件
 
 * `before_validation`
 * `after_validation`
@@ -96,7 +103,7 @@ Here is a list with all the available Active Record callbacks, listed in the sam
 * `after_save`
 * `after_commit/after_rollback`
 
-### Updating an Object
+### 3.2 更新物件
 
 * `before_validation`
 * `after_validation`
@@ -108,22 +115,24 @@ Here is a list with all the available Active Record callbacks, listed in the sam
 * `after_save`
 * `after_commit/after_rollback`
 
-### Destroying an Object
+### 3.3 刪除物件
 
 * `before_destroy`
 * `around_destroy`
 * `after_destroy`
 * `after_commit/after_rollback`
 
-WARNING. `after_save` runs both on create and update, but always _after_ the more specific callbacks `after_create` and `after_update`, no matter the order in which the macro calls were executed.
+WARNING. `after_save`在新建與更新中都會執行，但不論回呼註冊的順序為何，一定會在`after_create`與`after_update`兩個特定的回呼後執行。 
 
-### `after_initialize` and `after_find`
+### 3.4`after_initialize`與`after_find`
 
-The `after_initialize` callback will be called whenever an Active Record object is instantiated, either by directly using `new` or when a record is loaded from the database. It can be useful to avoid the need to directly override your Active Record `initialize` method.
+當實體化 Active Record 物件時 (不論是用`new`或是從資料庫中載入記錄)，會呼叫`after_initialize`。這比覆蓋 Active Record 的`initialize`方法還要好多了。
 
-The `after_find` callback will be called whenever Active Record loads a record from the database. `after_find` is called before `after_initialize` if both are defined.
+當 Active Record 從資料庫中載入記錄時，會呼叫`after_find`。若同時使用`after_find`與`after_initialize`，會先呼叫`after_find`。
 
-The `after_initialize` and `after_find` callbacks have no `before_*` counterparts, but they can be registered just like the other Active Record callbacks.
+
+
+`after_initialize`與`after_find`回呼都沒有對應的`before_*`，但它們的註冊方式跟一般回呼相同。
 
 ```ruby
 class User < ApplicationRecord
@@ -146,9 +155,10 @@ You have initialized an object!
 => #<User id: 1>
 ```
 
-### `after_touch`
+### 3.5 `after_touch`
 
-The `after_touch` callback will be called whenever an Active Record object is touched.
+當 Active Record 物件被 touch 後，就會呼叫`after_touch`。
+
 
 ```ruby
 class User < ApplicationRecord
@@ -165,7 +175,8 @@ You have touched an object
 => true
 ```
 
-It can be used along with `belongs_to`:
+可以搭配`belongs_to`使用：
+
 
 ```ruby
 class Employee < ApplicationRecord
@@ -195,10 +206,10 @@ An Employee was touched
 => true
 ```
 
-Running Callbacks
+4 執行回呼
 -----------------
 
-The following methods trigger callbacks:
+以下方法會觸發回呼：
 
 * `create`
 * `create!`
@@ -216,7 +227,7 @@ The following methods trigger callbacks:
 * `update!`
 * `valid?`
 
-Additionally, the `after_find` callback is triggered by the following finder methods:
+另外，`after_find`回呼會由以下查詢方法來觸發：
 
 * `all`
 * `first`
@@ -227,14 +238,14 @@ Additionally, the `after_find` callback is triggered by the following finder met
 * `find_by_sql`
 * `last`
 
-The `after_initialize` callback is triggered every time a new object of the class is initialized.
+每當初始化新的物件後，就會觸發`after_initialize`回呼。
 
-NOTE: The `find_by_*` and `find_by_*!` methods are dynamic finders generated automatically for every attribute. Learn more about them at the [Dynamic finders section](active_record_querying.html#dynamic-finders)
+NOTE: `find_by_*`與`find_by_*!`是 Active Record 替每個屬性自動產生的動耐查詢方法，想了解更多請參閱[動態查詢方法](active_record_querying.html#dynamic-finders)章節。
 
-Skipping Callbacks
+5 略過回呼
 ------------------
 
-Just as with validations, it is also possible to skip callbacks by using the following methods:
+跟驗證一樣，回呼是可以略過的。以下是可以略過回呼的方法：
 
 * `decrement`
 * `decrement_counter`
@@ -249,21 +260,25 @@ Just as with validations, it is also possible to skip callbacks by using the fol
 * `update_all`
 * `update_counters`
 
-These methods should be used with caution, however, because important business rules and application logic may be kept in callbacks. Bypassing them without understanding the potential implications may lead to invalid data.
+然而，要使用這些方法時請小心。回呼中有重要的商業規則和應用程式邏輯，若沒有真正了解其中的含意而略過它們，可能會導致無效的資料。
 
-Halting Execution
+
+6 終止執行
 -----------------
 
-As you start registering new callbacks for your models, they will be queued for execution. This queue will include all your model's validations, the registered callbacks, and the database operation to be executed.
+當您替 model 註冊新的回呼時，它們會被加入佇列裡等待執行。這個佇列包含了所有 model 中要執行的驗證、已註冊回呼、以及資料庫操作。
 
-The whole callback chain is wrapped in a transaction. If any _before_ callback method returns exactly `false` or raises an exception, the execution chain gets halted and a ROLLBACK is issued; _after_ callbacks can only accomplish that by raising an exception.
 
-WARNING. Any exception that is not `ActiveRecord::Rollback` or `ActiveRecord::RecordInvalid` will be re-raised by Rails after the callback chain is halted. Raising an exception other than `ActiveRecord::Rollback` or `ActiveRecord::RecordInvalid` may break code that does not expect methods like `save` and `update_attributes` (which normally try to return `true` or `false`) to raise an exception.
+整調回呼鏈 (callback chain) 會被包在一筆交易 (transaction) 中。只要有任一 _before_ 回呼方法回傳`false`或拋出異常，執行鏈就會終止並回滾； _after_ 回呼則是要拋出異常執行鏈才會終止並回滾。
 
-Relational Callbacks
+
+WARNING. 任何非`ActiveRecord::Rollback`或`ActiveRecord::RecordInvalid`的異常會在回呼鏈終止後被 Rails 重複拋出。拋出非`ActiveRecord::Rollback`或`ActiveRecord::RecordInvalid`的異常，可能會破壞沒有預期`save`與`update_attributes`(通常會回傳`true`或`false`)這類方法的程式碼來拋出異常。
+
+7 關聯回呼
 --------------------
 
-Callbacks work through model relationships, and can even be defined by them. Suppose an example where a user has many articles. A user's articles should be destroyed if the user is destroyed. Let's add an `after_destroy` callback to the `User` model by way of its relationship to the `Article` model:
+回呼可以在 model 間運作，甚至可以用 model 間的關聯來定義。舉個例子，假設使用者有很多文章，照理說那些文章在使用者被刪除後也要被刪除，這時可以在與`User`model 相關聯的`Article`model 加入`after_destroy`回呼：
+
 
 ```ruby
 class User < ApplicationRecord
@@ -287,14 +302,16 @@ Article destroyed
 => #<User id: 1>
 ```
 
-Conditional Callbacks
+8 條件式回呼
 ---------------------
 
-As with validations, we can also make the calling of a callback method conditional on the satisfaction of a given predicate. We can do this using the `:if` and `:unless` options, which can take a symbol, a string, a `Proc` or an `Array`. You may use the `:if` option when you want to specify under which conditions the callback **should** be called. If you want to specify the conditions under which the callback **should not** be called, then you may use the `:unless` option.
+就像驗證一樣，我們也可以讓回呼在滿足特定條件時才執行。條件可以透過`:if`與`:unless`來指定，可以傳入`Symbol`、`String`、`Proc`或`Array`。若要回呼在滿足條件時執行，請用`:if`；若要在不滿足條件時執行，請用`:unless`。
 
-### Using `:if` and `:unless` with a `Symbol`
 
-You can associate the `:if` and `:unless` options with a symbol corresponding to the name of a predicate method that will get called right before the callback. When using the `:if` option, the callback won't be executed if the predicate method returns false; when using the `:unless` option, the callback won't be executed if the predicate method returns true. This is the most common option. Using this form of registration it is also possible to register several different predicates that should be called to check if the callback should be executed.
+### 8.1 使用`Symbol`指定`:if`與`:unless`
+
+`:if`與`:unless`可以傳入`symbol`。`symbol`會對應到執行回呼前，所要呼叫的先決條件方法的名稱。使用`:if`時，若先決條件方法回傳`false`，就不會執行回呼；若是用`:unless`，則是回傳`true`才不會執行。使用`symbol`是最常見的，這樣的方式也可以同時註冊很多先決條件來判斷是否該執行回呼。
+
 
 ```ruby
 class Order < ApplicationRecord
@@ -302,9 +319,9 @@ class Order < ApplicationRecord
 end
 ```
 
-### Using `:if` and `:unless` with a String
+### 8.2 使用字串指定`:if`與`:unless`
 
-You can also use a string that will be evaluated using `eval` and hence needs to contain valid Ruby code. You should use this option only when the string represents a really short condition:
+您也可以傳入字串 (string)。傳入的字串將會用`eval`來求值，所以必須使用有效的 Ruby 程式碼。只有在條件夠簡短時才能使用這個方式：
 
 ```ruby
 class Order < ApplicationRecord
@@ -312,9 +329,10 @@ class Order < ApplicationRecord
 end
 ```
 
-### Using `:if` and `:unless` with a `Proc`
+### 8.3 使用`Proc`指定`:if`與`:unless`
 
-Finally, it is possible to associate `:if` and `:unless` with a `Proc` object. This option is best suited when writing short validation methods, usually one-liners:
+最後，也可以傳入`Proc`物件。這樣的方式最適合在撰寫簡短的驗證方法 (通常只有一行) 時使用 ：
+
 
 ```ruby
 class Order < ApplicationRecord
@@ -323,9 +341,10 @@ class Order < ApplicationRecord
 end
 ```
 
-### Multiple Conditions for Callbacks
+### 8.4 多重條件回呼
 
-When writing conditional callbacks, it is possible to mix both `:if` and `:unless` in the same callback declaration:
+撰寫條件式回呼時，也可以在一個回呼中同時使用`:if`與`:unless`：
+
 
 ```ruby
 class Comment < ApplicationRecord
@@ -334,12 +353,13 @@ class Comment < ApplicationRecord
 end
 ```
 
-Callback Classes
+9 回呼類別
 ----------------
 
-Sometimes the callback methods that you'll write will be useful enough to be reused by other models. Active Record makes it possible to create classes that encapsulate the callback methods, so it becomes very easy to reuse them.
+Active Record 可以將回呼方法封裝成類別，這時若要讓其他 model 來重複使用一個回呼，就變得非常容易。
 
-Here's an example where we create a class with an `after_destroy` callback for a `PictureFile` model:
+來看看這個例子，我們替`PictureFile`model 建立一個有`after_destroy`回呼的類別：
+
 
 ```ruby
 class PictureFileCallbacks
@@ -351,7 +371,8 @@ class PictureFileCallbacks
 end
 ```
 
-When declared inside a class, as above, the callback methods will receive the model object as a parameter. We can now use the callback class in the model:
+如上，在類別裡宣告回呼時，回呼方法會將接收的 model 物件視為一個參數。現在就可以在這個 model 中使用回呼類別了：
+
 
 ```ruby
 class PictureFile < ApplicationRecord
@@ -359,7 +380,8 @@ class PictureFile < ApplicationRecord
 end
 ```
 
-Note that we needed to instantiate a new `PictureFileCallbacks` object, since we declared our callback as an instance method. This is particularly useful if the callbacks make use of the state of the instantiated object. Often, however, it will make more sense to declare the callbacks as class methods:
+注意，由於我們將回呼宣告為實體方法，所以要實體化一個新的`PictureFileCallbacks`物件。這在回呼用到實體物件的情況下特別好用。然而，通常將回呼宣告成類別方法會更合理：
+
 
 ```ruby
 class PictureFileCallbacks
@@ -371,7 +393,7 @@ class PictureFileCallbacks
 end
 ```
 
-If the callback method is declared this way, it won't be necessary to instantiate a `PictureFileCallbacks` object.
+若使用這樣的方式宣告回呼，就不需要實體化一個`PictureFileCallbacks`物件了。
 
 ```ruby
 class PictureFile < ApplicationRecord
@@ -379,14 +401,16 @@ class PictureFile < ApplicationRecord
 end
 ```
 
-You can declare as many callbacks as you want inside your callback classes.
+在回呼類別中，可以不限數量的宣告回呼。
 
-Transaction Callbacks
+10 交易回呼
 ---------------------
 
-There are two additional callbacks that are triggered by the completion of a database transaction: `after_commit` and `after_rollback`. These callbacks are very similar to the `after_save` callback except that they don't execute until after database changes have either been committed or rolled back. They are most useful when your active record models need to interact with external systems which are not part of the database transaction.
+當完成資料庫交易時，會觸發兩個額外的回呼：`after_commit`與`after_rollback`。它們與`after_save`回呼非常類似，只差在它們會等到資料庫的變更被提交或回滾後才執行。當 Active Record model 需要與資料庫交易外的外部系統互動時，這兩個回呼非常有用。
 
-Consider, for example, the previous example where the `PictureFile` model needs to delete a file after the corresponding record is destroyed. If anything raises an exception after the `after_destroy` callback is called and the transaction rolls back, the file will have been deleted and the model will be left in an inconsistent state. For example, suppose that `picture_file_2` in the code below is not valid and the `save!` method raises an error.
+
+比如說在上例中，`PictureFile`model 需要在刪除某個記錄後，刪除其對應的檔案。若執行了`after_destroy`回呼後拋出了異常，則交易回滾。但此時檔案已經被刪除了，造成 model 處在不一致的狀態。舉例來說，以下的`picture_file_2`不是有效的檔案，`save!`方法會拋出錯誤。
+
 
 ```ruby
 PictureFile.transaction do
@@ -395,7 +419,8 @@ PictureFile.transaction do
 end
 ```
 
-By using the `after_commit` callback we can account for this case.
+若使用`after_commit`回呼，就可以解決這個問題。
+
 
 ```ruby
 class PictureFile < ApplicationRecord
@@ -409,11 +434,9 @@ class PictureFile < ApplicationRecord
 end
 ```
 
-NOTE: The `:on` option specifies when a callback will be fired. If you
-don't supply the `:on` option the callback will fire for every action.
+NOTE: `:on`選項可以指定回呼何時被觸發。若不指定，則每個 action 都會觸發。
 
-Since using `after_commit` callback only on create, update or delete is
-common, there are aliases for those operations:
+由於只在新建、更新、或刪除時使用`after_commit`回呼時是很常見的，故提供了這些操作的別名：
 
 * `after_create_commit`
 * `after_update_commit`
@@ -431,4 +454,4 @@ class PictureFile < ApplicationRecord
 end
 ```
 
-WARNING. The `after_commit` and `after_rollback` callbacks are guaranteed to be called for all models created, updated, or destroyed within a transaction block. If any exceptions are raised within one of these callbacks, they will be ignored so that they don't interfere with the other callbacks. As such, if your callback code could raise an exception, you'll need to rescue it and handle it appropriately within the callback.
+WARNING. `after_commit`與`after_rollback`回呼在交易區塊中新建、更新、或刪除 model 時是一定會執行的。這時若回呼拋出任何異常都會被忽略，來確保彼此不會互相干擾。因此，當回呼拋出異常時，記得自己救援並在回呼中做適當的處理。 
