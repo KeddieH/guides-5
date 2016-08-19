@@ -1,28 +1,29 @@
 **DO NOT READ THIS FILE ON GITHUB, GUIDES ARE PUBLISHED ON http://guides.rubyonrails.org.**
 
-Active Record Query Interface
+Active Record 查詢
 =============================
 
-This guide covers different ways to retrieve data from the database using Active Record.
+本篇詳細介紹使用 Active Record 從資料庫取出資料的各種方法。
 
-After reading this guide, you will know:
+讀完本篇，您將了解：
 
-* How to find records using a variety of methods and conditions.
-* How to specify the order, retrieved attributes, grouping, and other properties of the found records.
-* How to use eager loading to reduce the number of database queries needed for data retrieval.
-* How to use dynamic finder methods.
-* How to use method chaining to use multiple Active Record methods together.
-* How to check for the existence of particular records.
-* How to perform various calculations on Active Record models.
-* How to run EXPLAIN on relations.
+* 如何使用各種方法和條件來查找資料庫記錄 (record)。
+* 如何替找出的資料庫記錄指定排序方式、要取出的屬性、分組、與其他特性。
+* 如何使用 eager loading 來減少取出資料時的資料庫查詢次數。
+* 如何使用動態查詢方法。
+* 如何使用方法鏈 (method chaining) 來同時使用多個 Active Record 方法。
+* 如何檢查特定的資料庫記錄是否存在。
+* 如何在 Active Record model 中做各種運算。
+* 如何在 relation 中使用 EXPLAIN。
 
 --------------------------------------------------------------------------------
 
-If you're used to using raw SQL to find database records, then you will generally find that there are better ways to carry out the same operations in Rails. Active Record insulates you from the need to use SQL in most cases.
+若您習慣使用純 SQL 來查找資料庫記錄，就會發現在 Rails 中可以用更好的方式來完成相同的操作。Active Record 讓您在多數情況下都不需要使用 SQL。
 
-Code examples throughout this guide will refer to one or more of the following models:
+本篇的例子都會用到下列的 model 來講解：
 
-TIP: All of the following models use `id` as the primary key, unless specified otherwise.
+
+TIP: 除非有特別說明，不然下列的 model 都用 id 做為主鍵。
 
 ```ruby
 class Client < ApplicationRecord
@@ -50,14 +51,15 @@ class Role < ApplicationRecord
 end
 ```
 
-Active Record will perform queries on the database for you and is compatible with most database systems, including MySQL, MariaDB, PostgreSQL and SQLite. Regardless of which database system you're using, the Active Record method format will always be the same.
+Active Record 會幫您查詢資料庫，且相容多數的資料庫系統，包括 MySQL、MariaDB、PostgreSQL、與 SQLite。不管使用哪種資料庫，Active Record 的方法格式都是一樣的。
 
-Retrieving Objects from the Database
+
+1 取出資料
 ------------------------------------
 
-To retrieve objects from the database, Active Record provides several finder methods. Each finder method allows you to pass arguments into it to perform certain queries on your database without writing raw SQL.
+Active Record 提供了多種查找方法 (finder method) 來從資料庫取出物件。每個查找方法都可以傳入引數來對資料庫執行不同的查詢，不用寫純 SQL。
 
-The methods are:
+查找方法有：
 
 * `find`
 * `create_with`
@@ -84,22 +86,23 @@ The methods are:
 * `distinct`
 * `where`
 
-All of the above methods return an instance of `ActiveRecord::Relation`.
+以上方法皆會回傳一個`ActiveRecord::Relation`實體。
 
-The primary operation of `Model.find(options)` can be summarized as:
+`Model.find(options)`的主要操作可以總結如下：
 
-* Convert the supplied options to an equivalent SQL query.
-* Fire the SQL query and retrieve the corresponding results from the database.
-* Instantiate the equivalent Ruby object of the appropriate model for every resulting row.
-* Run `after_find` and then `after_initialize` callbacks, if any.
+* 將傳入的參數轉換成相對應的 SQL 查詢語句。
+* 執行 SQL 語句，從資料庫中取出對應的結果。
+* 根據每個查詢結果，從適當的 model 實體化出 Ruby 物件。
+* 若有`after_find`與`after_initialize`回呼的話，會執行它們。 
 
-### Retrieving a Single Object
+### 取出單一物件
 
-Active Record provides several different ways of retrieving a single object.
+Active Record 提供了不同的方式來取出單一物件。
 
-#### `find`
 
-Using the `find` method, you can retrieve the object corresponding to the specified _primary key_ that matches any supplied options. For example:
+#### 1.1.1`find`
+
+使用`find`方法，傳入的參數會對應到物件的主鍵 (primary key)，並取出該物件。例如：
 
 ```ruby
 # Find the client with primary key (id) 10.
@@ -107,15 +110,17 @@ client = Client.find(10)
 # => #<Client id: 10, first_name: "Ryan">
 ```
 
-The SQL equivalent of the above is:
+等同於以下的 SQL：
+
 
 ```sql
 SELECT * FROM clients WHERE (clients.id = 10) LIMIT 1
 ```
 
-The `find` method will raise an `ActiveRecord::RecordNotFound` exception if no matching record is found.
+若沒有找到符合的記錄，`find`會拋出`ActiveRecord::RecordNotFound`異常。
 
-You can also use this method to query for multiple objects. Call the `find` method and pass in an array of primary keys. The return will be an array containing all of the matching records for the supplied _primary keys_. For example:
+在使用`find`時，也可以傳入一個主鍵陣列來同時查找多個物件。這會回傳一個陣列，包含所有符合主鍵的記錄。
+
 
 ```ruby
 # Find the clients with primary keys 1 and 10.
@@ -123,32 +128,33 @@ client = Client.find([1, 10]) # Or even Client.find(1, 10)
 # => [#<Client id: 1, first_name: "Lifo">, #<Client id: 10, first_name: "Ryan">]
 ```
 
-The SQL equivalent of the above is:
+等同於以下的 SQL：
 
 ```sql
 SELECT * FROM clients WHERE (clients.id IN (1,10))
 ```
 
-WARNING: The `find` method will raise an `ActiveRecord::RecordNotFound` exception unless a matching record is found for **all** of the supplied primary keys.
+WARNING: 除非**所有**傳入的主鍵都有相符的物件，否則`find`方法會拋出`ActiveRecord::RecordNotFound`異常。
 
-#### `take`
+#### 1.1.2`take`
 
-The `take` method retrieves a record without any implicit ordering. For example:
+`take`方法不會照順序來取出記錄。例如：
+
 
 ```ruby
 client = Client.take
 # => #<Client id: 1, first_name: "Lifo">
 ```
 
-The SQL equivalent of the above is:
+等同於以下的 SQL：
 
 ```sql
 SELECT * FROM clients LIMIT 1
 ```
 
-The `take` method returns `nil` if no record is found and no exception will be raised.
+若沒有找到記錄，`take`會回傳`nil`，且不會拋出異常。
 
-You can pass in a numerical argument to the `take` method to return up to that number of results. For example
+您可以傳入一個數值引數給`take`，會回傳多筆結果 (不超過該數值)。例如：
 
 ```ruby
 client = Client.take(2)
@@ -158,36 +164,39 @@ client = Client.take(2)
 # ]
 ```
 
-The SQL equivalent of the above is:
+等同於以下的 SQL：
 
 ```sql
 SELECT * FROM clients LIMIT 2
 ```
 
-The `take!` method behaves exactly like `take`, except that it will raise `ActiveRecord::RecordNotFound` if no matching record is found.
+`take!`方法跟`take`一模一樣，只是當沒有符合的記錄時，會拋出`ActiveRecord::RecordNotFound`異常。
 
-TIP: The retrieved record may vary depending on the database engine.
+TIP: 用`take`取出的紀錄會依不同的資料庫引擎而有所不同。
 
-#### `first`
+#### 1.1.3`first`
 
-The `first` method finds the first record ordered by primary key (default). For example:
+`first`方法在預設的情況下，會依照主鍵的排序來取出第一筆記錄。例如：
+
 
 ```ruby
 client = Client.first
 # => #<Client id: 1, first_name: "Lifo">
 ```
 
-The SQL equivalent of the above is:
+等同於以下的 SQL：
+
 
 ```sql
 SELECT * FROM clients ORDER BY clients.id ASC LIMIT 1
 ```
 
-The `first` method returns `nil` if no matching record is found and no exception will be raised.
+若沒有找到符合的記錄，`first`會回傳`nil`，且不會拋出異常。
 
-If your [default scope](active_record_querying.html#applying-a-default-scope) contains an order method, `first` will return the first record according to this ordering.
 
-You can pass in a numerical argument to the `first` method to return up to that number of results. For example
+若您的[預設環境](active_record_querying.html#applying-a-default-scope) 有設定排序方法，`first`會根據該排序方法來回傳第一筆記錄。 
+
+您可以傳入一個數值引數給`first`來取出多筆記錄。例如：傳入3，會回傳第一到第三筆記錄。
 
 ```ruby
 client = Client.first(3)
@@ -198,47 +207,53 @@ client = Client.first(3)
 # ]
 ```
 
-The SQL equivalent of the above is:
+等同於以下的 SQL：
+
 
 ```sql
 SELECT * FROM clients ORDER BY clients.id ASC LIMIT 3
 ```
 
-On a collection that is ordered using `order`, `first` will return the first record ordered by the specified attribute for `order`.
+若經過`order`方法排序後，`first`會回傳依照該`order`排序的第一筆記錄。
+
 
 ```ruby
 client = Client.order(:first_name).first
 # => #<Client id: 2, first_name: "Fifo">
 ```
 
-The SQL equivalent of the above is:
+等同於以下的 SQL：
+
 
 ```sql
 SELECT * FROM clients ORDER BY clients.first_name ASC LIMIT 1
 ```
 
-The `first!` method behaves exactly like `first`, except that it will raise `ActiveRecord::RecordNotFound` if no matching record is found.
+`first!`方法跟`first`一模一樣，只是當沒有符合的記錄時，會拋出`ActiveRecord::RecordNotFound`異常。
 
-#### `last`
 
-The `last` method finds the last record ordered by primary key (default). For example:
+#### 1.1.4`last`
+
+`last`方法在預設的情況下，會依照主鍵的排序來取出最後一筆記錄。例如：
+
 
 ```ruby
 client = Client.last
 # => #<Client id: 221, first_name: "Russel">
 ```
-
-The SQL equivalent of the above is:
+等同於以下的 SQL：
 
 ```sql
 SELECT * FROM clients ORDER BY clients.id DESC LIMIT 1
 ```
 
-The `last` method returns `nil` if no matching record is found and no exception will be raised.
+若沒有找到符合的記錄，`last`會回傳`nil`，且不會拋出異常。
 
-If your [default scope](active_record_querying.html#applying-a-default-scope) contains an order method, `last` will return the last record according to this ordering.
 
-You can pass in a numerical argument to the `last` method to return up to that number of results. For example
+若您的[預設環境](active_record_querying.html#applying-a-default-scope) 有設定排序方法，`last`會根據該排序方法來回傳最後一筆記錄。 
+
+您可以傳入一個數值引數給`last`來取出多筆記錄。例如：傳入3，會回傳三筆資料，從最後一筆往前推。
+
 
 ```ruby
 client = Client.last(3)
@@ -249,30 +264,34 @@ client = Client.last(3)
 # ]
 ```
 
-The SQL equivalent of the above is:
+等同於以下的 SQL：
+
 
 ```sql
 SELECT * FROM clients ORDER BY clients.id DESC LIMIT 3
 ```
 
-On a collection that is ordered using `order`, `last` will return the last record ordered by the specified attribute for `order`.
+若經過`order`方法排序後，`last`會回傳依照該`order`排序的最後一筆記錄。
+
 
 ```ruby
 client = Client.order(:first_name).last
 # => #<Client id: 220, first_name: "Sara">
 ```
 
-The SQL equivalent of the above is:
+等同於以下的 SQL：
+
 
 ```sql
 SELECT * FROM clients ORDER BY clients.first_name DESC LIMIT 1
 ```
 
-The `last!` method behaves exactly like `last`, except that it will raise `ActiveRecord::RecordNotFound` if no matching record is found.
+`last!`方法跟`last`一模一樣，只是當沒有符合的記錄時，會拋出`ActiveRecord::RecordNotFound`異常。
 
-#### `find_by`
 
-The `find_by` method finds the first record matching some conditions. For example:
+#### 1.1.5`find_by`
+
+`find_by`方法會取出符合條件的第一筆記錄。例如：
 
 ```ruby
 Client.find_by first_name: 'Lifo'
@@ -282,53 +301,56 @@ Client.find_by first_name: 'Jon'
 # => nil
 ```
 
-It is equivalent to writing:
+等同於：
+
 
 ```ruby
 Client.where(first_name: 'Lifo').take
 ```
 
-The SQL equivalent of the above is:
+等同於以下的 SQL：
+
 
 ```sql
 SELECT * FROM clients WHERE (clients.first_name = 'Lifo') LIMIT 1
 ```
 
-The `find_by!` method behaves exactly like `find_by`, except that it will raise `ActiveRecord::RecordNotFound` if no matching record is found. For example:
+`find_by!`方法跟`find_by`一模一樣，只是當沒有符合的記錄時，會拋出`ActiveRecord::RecordNotFound`異常。例如：
+
 
 ```ruby
 Client.find_by! first_name: 'does not exist'
 # => ActiveRecord::RecordNotFound
 ```
 
-This is equivalent to writing:
+等同於：
+
 
 ```ruby
 Client.where(first_name: 'does not exist').take!
 ```
 
-### Retrieving Multiple Objects in Batches
+### 1.2 批次取出多筆記錄
 
-We often need to iterate over a large set of records, as when we send a newsletter to a large set of users, or when we export data.
+很多時候，我們需要對大量的記錄做同樣的事，像是寄信給大量的使用者或是輸出資料。
 
-This may appear straightforward:
+這也許是最直接的作法：
 
 ```ruby
-# This may consume too much memory if the table is big.
+# 若遇到龐大的資料表，這會佔用過多的記憶體
 User.all.each do |user|
   NewsMailer.weekly(user).deliver_now
 end
 ```
+當資料表越大，這樣的方式就越不可行。`User.all.each`會告訴 Active Record 一次把 _整張資料表_ 抓出來，接著從每一列建出物件，最後將所有物件放在記憶體中。可想而知，若資料庫有龐大數量的紀錄，記憶體就不夠用了。
 
-But this approach becomes increasingly impractical as the table size increases, since `User.all.each` instructs Active Record to fetch _the entire table_ in a single pass, build a model object per row, and then keep the entire array of model objects in memory. Indeed, if we have a large number of records, the entire collection may exceed the amount of memory available.
+為了解決這個問題，Rails 提供了兩種方法來將記錄分批成適合記憶體的大小來處理。第一種方法是`find_each`，會取出一批記錄，分別傳入 _每一筆_ 記錄到區塊中。第二種方法是`find_in_batches`，會取出一批記錄，然後以陣列的方式傳入 _整批_ 記錄到區塊中。
 
-Rails provides two methods that address this problem by dividing records into memory-friendly batches for processing. The first method, `find_each`, retrieves a batch of records and then yields _each_ record to the block individually as a model. The second method, `find_in_batches`, retrieves a batch of records and then yields _the entire batch_ to the block as an array of models.
+TIP: `find_each`與`find_in_batches`方法專門用來批次處理記憶體無法負荷的龐大資料量。若只有一千筆資料，使用平常的查詢方法就夠了。 
 
-TIP: The `find_each` and `find_in_batches` methods are intended for use in the batch processing of a large number of records that wouldn't fit in memory all at once. If you just need to loop over a thousand records the regular find methods are the preferred option.
+#### 1.2.1`find_each`
 
-#### `find_each`
-
-The `find_each` method retrieves records in batches and then yields _each_ one to the block. In the following example, `find_each` retrieves users in batches of 1000 and yields them to the block one by one:
+`find_each`方法會取出一批記錄，分別傳入 _每一筆_ 記錄到區塊中。在下面的例子中，`find_each`一次會取出 1000 筆 user 記錄，並一個一個傳入區塊中：
 
 ```ruby
 User.find_each do |user|
@@ -336,9 +358,9 @@ User.find_each do |user|
 end
 ```
 
-This process is repeated, fetching more batches as needed, until all of the records have been processed.
+一批處理完後，會再取出下一批，直到所有記錄都處理完畢。
 
-`find_each` works on model classes, as seen above, and also on relations:
+如上例所示，`find_each`可以用在 model 類別上。此外，也可以用在 relation：
 
 ```ruby
 User.where(weekly_subscriber: true).find_each do |user|
@@ -346,20 +368,16 @@ User.where(weekly_subscriber: true).find_each do |user|
 end
 ```
 
-as long as they have no ordering, since the method needs to force an order
-internally to iterate.
+由於批次處理會強制使用固定的排序，故無法自行加上排序方式。
 
-If an order is present in the receiver the behaviour depends on the flag
-`config.active_record.error_on_ignored_order`. If true, `ArgumentError` is
-raised, otherwise the order is ignored and a warning issued, which is the
-default. This can be overridden with the option `:error_on_ignore`, explained
-below.
+若有排序，當`config.active_record.error_on_ignored_order`為 true 時，會拋出`ArgumentError`，否則在預設 (false) 的情況下，會發出警告並直接忽略排序。預設值可以用 `:error_on_ignore`選項來更改，以下會說明。
 
-##### Options for `find_each`
+
+##### 1.2.1.1`find_each`可用的選項
 
 **`:batch_size`**
 
-The `:batch_size` option allows you to specify the number of records to be retrieved in each batch, before being passed individually to the block. For example, to retrieve records in batches of 5000:
+`:batch_size`選項可以指定每一批要取出多少筆記錄。例如，一次取出 5000 筆：
 
 ```ruby
 User.find_each(batch_size: 5000) do |user|
@@ -369,9 +387,10 @@ end
 
 **`:start`**
 
-By default, records are fetched in ascending order of the primary key, which must be an integer. The `:start` option allows you to configure the first ID of the sequence whenever the lowest ID is not the one you need. This would be useful, for example, if you wanted to resume an interrupted batch process, provided you saved the last processed ID as a checkpoint.
+在預設的情況下，會依照主鍵以遞增的順序來抓取記錄 (主鍵的型別必須為整數)。當您不想要從最小的 ID 開始時，`:start`選項可以設定要從哪個 ID 開始取出。這對某些情況很有幫助，像是當批次處理的過程被打斷了，只要有記住最後一個被處理過的 ID，就可以從那繼續開始。
+   
+舉例來說，只寄信給 ID 2000 以後的使用者：
 
-For example, to send newsletters only to users with the primary key starting from 2000:
 
 ```ruby
 User.find_each(start: 2000) do |user|
@@ -381,10 +400,10 @@ end
 
 **`:finish`**
 
-Similar to the `:start` option, `:finish` allows you to configure the last ID of the sequence whenever the highest ID is not the one you need.
-This would be useful, for example, if you wanted to run a batch process using a subset of records based on `:start` and `:finish`.
+類似`:start`選項，`:finish`能讓您設定要取到哪個 ID 為止。這在想要針對特定記錄做處理時很有幫助。
+  
+例如，只寄信給 ID 2000 到 10000 的使用者時：
 
-For example, to send newsletters only to users with the primary key starting from 2000 up to 10000:
 
 ```ruby
 User.find_each(start: 2000, finish: 10000) do |user|
@@ -392,18 +411,17 @@ User.find_each(start: 2000, finish: 10000) do |user|
 end
 ```
 
-Another example would be if you wanted multiple workers handling the same
-processing queue. You could have each worker handle 10000 records by setting the
-appropriate `:start` and `:finish` options on each worker.
+另一個例子是，如果您要一次讓很多人負責同一組記錄，可以分別設定`:start`與`:finish`來讓他們各別處理 10000 筆記錄。
+
 
 **`:error_on_ignore`**
 
-Overrides the application config to specify if an error should be raised when an
-order is present in the relation.
+可以指定當關連中有排序時是否要拋出錯誤。
 
-#### `find_in_batches`
 
-The `find_in_batches` method is similar to `find_each`, since both retrieve batches of records. The difference is that `find_in_batches` yields _batches_ to the block as an array of models, instead of individually. The following example will yield to the supplied block an array of up to 1000 invoices at a time, with the final block containing any remaining invoices:
+####1.2.2`find_in_batches`
+
+`find_in_batches`跟`find_each`很像，兩個都會批次取出紀錄。唯一的不同在於`find_in_batches`會以陣列的方式傳入 _整批_ 記錄到區塊中，而不是個別傳入。下面的例子會一次傳入最多 1000 筆帳單到區塊處理，並在下個區塊處理剩下的帳單：
 
 ```ruby
 # Give add_invoices an array of 1000 invoices at a time.
@@ -412,7 +430,7 @@ Invoice.find_in_batches do |invoices|
 end
 ```
 
-`find_in_batches` works on model classes, as seen above, and also on relations:
+如上所示，`find_in_batches`可以用在 model 類別上。此外，也可以用在 relation：
 
 ```ruby
 Invoice.pending.find_in_batches do |invoice|
@@ -420,150 +438,160 @@ Invoice.pending.find_in_batches do |invoice|
 end
 ```
 
-as long as they have no ordering, since the method needs to force an order
-internally to iterate.
+由於批次處理會強制使用固定的排序，故無法自行加上排序方式。
 
-##### Options for `find_in_batches`
 
-The `find_in_batches` method accepts the same options as `find_each`.
+#####1.2.2.1 `find_in_batches`可用的選項
 
-Conditions
+`find_in_batches`可以使用的選項跟跟`find_each`一樣。
+
+2 條件
 ----------
 
-The `where` method allows you to specify conditions to limit the records returned, representing the `WHERE`-part of the SQL statement. Conditions can either be specified as a string, array, or hash.
+`where`方法可以用來取出符合條件的紀錄，即代表 SQL 語句中的`WHERE`部分。條件可以是字串、陣列、或是 hash。
 
-### Pure String Conditions
 
-If you'd like to add conditions to your find, you could just specify them in there, just like `Client.where("orders_count = '2'")`. This will find all clients where the `orders_count` field's value is 2.
+### 2.1 純字串條件
 
-WARNING: Building your own conditions as pure strings can leave you vulnerable to SQL injection exploits. For example, `Client.where("first_name LIKE '%#{params[:first_name]}%'")` is not safe. See the next section for the preferred way to handle conditions using an array.
+若想替查詢加入條件，可以用字串的形式直接傳入 where。像是`Client.where("orders_count = '2'")`，會回傳所有`orders_count`是 2 的客戶。
 
-### Array Conditions
+WARNING: 使用純字串條件會有 SQL injection (SQL 資料隱碼攻擊) 的風險。例如，`Client.where("first_name LIKE '%#{params[:first_name]}%'")`是不安全的。請看下節來了解如何用陣列來處理條件。
 
-Now what if that number could vary, say as an argument from somewhere? The find would then take the form:
+### 2.2 陣列條件
+
+如果要找的 orders_count 是不固定的數字，像是要放入從某處來的引數該怎麼辦？可以這樣寫：
 
 ```ruby
 Client.where("orders_count = ?", params[:orders])
 ```
 
-Active Record will take the first argument as the conditions string and any additional arguments will replace the question marks `(?)` in it.
+Active Record 會將第一個引數視為條件字串，其他的引數則會取代其中的`?`。上例會將`?`換成`params[:orders]`來查詢。
 
-If you want to specify multiple conditions:
+也可以一次宣告多個條件：
 
 ```ruby
 Client.where("orders_count = ? AND locked = ?", params[:orders], false)
 ```
 
-In this example, the first question mark will be replaced with the value in `params[:orders]` and the second will be replaced with the SQL representation of `false`, which depends on the adapter.
+上述例子中，第一個`?`會換成`params[:orders]`，第二個`?`則會換成 SQL 裡的`false`(根據不同的 adapter 而異)。
 
-This code is highly preferable:
+這樣寫...
 
 ```ruby
 Client.where("orders_count = ?", params[:orders])
 ```
 
-to this code:
+比下面這種寫法好多了
 
 ```ruby
 Client.where("orders_count = #{params[:orders]}")
 ```
 
-because of argument safety. Putting the variable directly into the conditions string will pass the variable to the database **as-is**. This means that it will be an unescaped variable directly from a user who may have malicious intent. If you do this, you put your entire database at risk because once a user finds out they can exploit your database they can do just about anything to it. Never ever put your arguments directly inside the conditions string.
+前者的寫法比較好，因為較安全。將變數直接放進條件字串裡， _不管變數是什麼_ 都會直接存入資料庫。這表示，惡意的使用者可以直接將變數存入資料庫。這樣做等於是把整個資料庫放在風險中，因為一旦有使用者發現他可以存入任何變數時，就可以對資料庫做任何事了。所以，千萬不要把變數直接放入條件字串裡。
 
-TIP: For more information on the dangers of SQL injection, see the [Ruby on Rails Security Guide](security.html#sql-injection).
+TIP: 想了解更多關於 SQL injection 的資訊，請參閱[Ruby on Rails 安全指南](security.html#sql-injection).
 
-#### Placeholder Conditions
+#### 2.2.1 佔位符
 
-Similar to the `(?)` replacement style of params, you can also specify keys in your conditions string along with a corresponding keys/values hash:
+類似`(?)`的取代方式，您也可以在條件字串中宣告鍵 (key) 和相對應的 hash 鍵值對 (key/value)：
+
 
 ```ruby
 Client.where("created_at >= :start_date AND created_at <= :end_date",
   {start_date: params[:start_date], end_date: params[:end_date]})
 ```
 
-This makes for clearer readability if you have a large number of variable conditions.
+當有很多條件時，這樣的方法能夠增加可讀性。
 
-### Hash Conditions
 
-Active Record also allows you to pass in hash conditions which can increase the readability of your conditions syntax. With hash conditions, you pass in a hash with keys of the fields you want qualified and the values of how you want to qualify them:
+### 2.3 Hash 條件
 
-NOTE: Only equality, range and subset checking are possible with Hash conditions.
+Active Record 也接受 hash 條件，可以增加條件式的可讀性。使用 hash 條件時，鍵是要查詢的欄位，值是查詢的方式：
 
-#### Equality Conditions
+
+NOTE: 只有 equality、range、與 subset 可以用來寫 hash 條件。
+
+#### 2.3.1 Equality 條件
 
 ```ruby
 Client.where(locked: true)
 ```
 
-This will generate SQL like this:
+這會產生下面的 SQL：
 
 ```sql
 SELECT * FROM clients WHERE (clients.locked = 1)
 ```
 
-The field name can also be a string:
+欄位名稱也可以是字串：
 
 ```ruby
 Client.where('locked' => true)
 ```
 
-In the case of a belongs_to relationship, an association key can be used to specify the model if an Active Record object is used as the value. This method works with polymorphic relationships as well.
+在 belongs_to 的關係中，若 Active Record 物件被當做值來使用，關聯鍵也可以用來查詢。polymorphic (多型性) 關係也可以用這樣的方式。
+
 
 ```ruby
 Article.where(author: author)
 Author.joins(:articles).where(articles: { author: author })
 ```
 
-NOTE: The values cannot be symbols. For example, you cannot do `Client.where(status: :active)`.
+NOTE: 條件的值不能用符號。舉例來說，`Client.where(status: :active)`是不行的。
 
-#### Range Conditions
+#### 2.3.2 Range 條件
 
 ```ruby
 Client.where(created_at: (Time.now.midnight - 1.day)..Time.now.midnight)
 ```
 
-This will find all clients created yesterday by using a `BETWEEN` SQL statement:
+這會用 SQL 的`BETWEEN`來找出所有昨天建立的客戶：
+
 
 ```sql
 SELECT * FROM clients WHERE (clients.created_at BETWEEN '2008-12-21 00:00:00' AND '2008-12-22 00:00:00')
 ```
 
-This demonstrates a shorter syntax for the examples in [Array Conditions](#array-conditions)
+這種寫法示範了如何簡化[陣列條件](#array-conditions)中舉的例子。
 
-#### Subset Conditions
+#### 2.3.3 Subset 條件
 
-If you want to find records using the `IN` expression you can pass an array to the conditions hash:
+若想用 SQL 的`IN`來查詢，可以在條件 hash 中傳入陣列：
+
 
 ```ruby
 Client.where(orders_count: [1,3,5])
 ```
 
-This code will generate SQL like this:
+這會產生下列的 SQL：
+
 
 ```sql
 SELECT * FROM clients WHERE (clients.orders_count IN (1,3,5))
 ```
 
-### NOT Conditions
+### 2.4 NOT 條件
 
-`NOT` SQL queries can be built by `where.not`:
+SQL 的`NOT`可以使用`where.not`來寫：
+
 
 ```ruby
 Client.where.not(locked: true)
 ```
+換句話說，可以先呼叫不帶引數的`where`，緊接著加上`not`傳入`where`條件。這會產生如下的 SQL：
 
-In other words, this query can be generated by calling `where` with no argument, then immediately chain with `not` passing `where` conditions.  This will generate SQL like this:
 
 ```sql
 SELECT * FROM clients WHERE (clients.locked != 1)
 ```
 
-Ordering
+3 排序
 --------
 
-To retrieve records from the database in a specific order, you can use the `order` method.
+使用`order`方法，可以按特定的順序取出記錄。
 
-For example, if you're getting a set of records and want to order them in ascending order by the `created_at` field in your table:
+例如有一組記錄，想要按照`created_at`欄位做遞增排列：
+
 
 ```ruby
 Client.order(:created_at)
@@ -571,7 +599,8 @@ Client.order(:created_at)
 Client.order("created_at")
 ```
 
-You could specify `ASC` or `DESC` as well:
+也可以用`ASC`(遞增排列)或`DESC`(遞減排列)： 
+
 
 ```ruby
 Client.order(created_at: :desc)
@@ -583,7 +612,8 @@ Client.order("created_at DESC")
 Client.order("created_at ASC")
 ```
 
-Or ordering by multiple fields:
+也可以按不同欄位排序：
+
 
 ```ruby
 Client.order(orders_count: :asc, created_at: :desc)
@@ -595,105 +625,119 @@ Client.order("orders_count ASC, created_at DESC")
 Client.order("orders_count ASC", "created_at DESC")
 ```
 
-If you want to call `order` multiple times, subsequent orders will be appended to the first:
+如果想要一次呼叫很多`order`，後面的`order`會附在第一個`order`之後。
+
 
 ```ruby
 Client.order("orders_count ASC").order("created_at DESC")
 # SELECT * FROM clients ORDER BY orders_count ASC, created_at DESC
 ```
 
-Selecting Specific Fields
+4 選出特定欄位
 -------------------------
 
-By default, `Model.find` selects all the fields from the result set using `select *`.
+在預設的情況下，`Model.find`會使用`select *`來取出所有欄位。
 
-To select only a subset of fields from the result set, you can specify the subset via the `select` method.
 
-For example, to select only `viewable_by` and `locked` columns:
+若只想取出特定的欄位，可以用`select`方法來宣告。
+
+例如，只想要`viewable_by`與`locked`欄位：
 
 ```ruby
 Client.select("viewable_by, locked")
 ```
 
-The SQL query used by this find call will be somewhat like:
+這會產生如下的 SQL 語句：
 
 ```sql
 SELECT viewable_by, locked FROM clients
 ```
 
-Be careful because this also means you're initializing a model object with only the fields that you've selected. If you attempt to access a field that is not in the initialized record you'll receive:
+注意，使用`select`代表只從您選取的欄位來實體化物件。若試圖存取不存在的欄位，會得到`ActiveModel::MissingAttributeError`異常：
+
 
 ```bash
 ActiveModel::MissingAttributeError: missing attribute: <attribute>
 ```
 
-Where `<attribute>` is the attribute you asked for. The `id` method will not raise the `ActiveRecord::MissingAttributeError`, so just be careful when working with associations because they need the `id` method to function properly.
+上面的`<attribute>`是您要取出的欄位。`id`方法不會拋出`ActiveRecord::MissingAttributeError`異常，所以在關聯裡使用的時候要特別小心，因為它們需要`id`方法才能正常運作。
 
-If you would like to only grab a single record per unique value in a certain field, you can use `distinct`:
+若想找出一個欄位中所有不同的值，可以使用`distinct`，每個值只會回傳一筆記錄，比如說：
+
+```ruby
+Client.select(:name)
+# =>  可能會回傳兩筆相同名字的紀錄
+```
 
 ```ruby
 Client.select(:name).distinct
+# => 每個不同的名字都只回傳一筆記錄，就算有兩個同樣的名字也只回傳一筆
 ```
 
-This would generate SQL like:
+這會產生如下的 SQL 語句：
+
 
 ```sql
 SELECT DISTINCT name FROM clients
 ```
 
-You can also remove the uniqueness constraint:
+也可以移除唯一值約束 (uniqueness constraint)：
 
 ```ruby
 query = Client.select(:name).distinct
-# => Returns unique names
+# => 回傳所有不同的名字
 
 query.distinct(false)
-# => Returns all names, even if there are duplicates
+# => 回傳所有的名字，就算有相同的名字
 ```
 
-Limit and Offset
+5 Limit 與 Offset
 ----------------
 
-To apply `LIMIT` to the SQL fired by the `Model.find`, you can specify the `LIMIT` using `limit` and `offset` methods on the relation.
+想要對`Model.find`產生的 SQL 使用`LIMIT`的話，可以使用`limit`與`offset`。
 
-You can use `limit` to specify the number of records to be retrieved, and use `offset` to specify the number of records to skip before starting to return the records. For example
+使用`limit`可以宣告要取出幾筆記錄，`offset`則是宣告在取出記錄前要跳過幾筆記錄。例如：
+
 
 ```ruby
 Client.limit(5)
 ```
 
-will return a maximum of 5 clients and because it specifies no offset it will return the first 5 in the table. The SQL it executes looks like this:
+這會回傳最多 5 筆客戶記錄。由於沒有宣告`offset`，所以會回傳資料表的最前面五筆記錄。產生的 SQL 語句如下：
+
 
 ```sql
 SELECT * FROM clients LIMIT 5
 ```
 
-Adding `offset` to that
+若加入`offset`的話：
 
 ```ruby
 Client.limit(5).offset(30)
 ```
 
-will return instead a maximum of 5 clients beginning with the 31st. The SQL looks like:
+則會從第 31 筆記錄開始回傳，SQL 語句如下：
+
 
 ```sql
 SELECT * FROM clients LIMIT 5 OFFSET 30
 ```
 
-Group
------
+6 Group
+--------
 
-To apply a `GROUP BY` clause to the SQL fired by the finder, you can use the `group` method.
+要在查詢中使用 SQL 的`GROUP BY`，可以用`group`方法。 
 
+例如，想找出下訂單的日期：
 For example, if you want to find a collection of the dates on which orders were created:
 
 ```ruby
 Order.select("date(created_at) as ordered_date, sum(price) as total_price").group("date(created_at)")
 ```
 
-And this will give you a single `Order` object for each date where there are orders in the database.
+每個有訂單的日期都會回傳一個`Order`物件。
 
-The SQL that would be executed would be something like this:
+產生的 SQL 語句如下：
 
 ```sql
 SELECT date(created_at) as ordered_date, sum(price) as total_price
@@ -701,16 +745,17 @@ FROM orders
 GROUP BY date(created_at)
 ```
 
-### Total of grouped items
+### 6.1 Group 裡項目的總數
 
-To get the total of grouped items on a single query, call `count` after the `group`.
+若想知道使用`group`查詢結果的總數，可以在`group`後呼叫`count`。
 
 ```ruby
 Order.group(:status).count
 # => { 'awaiting_approval' => 7, 'paid' => 12 }
 ```
 
-The SQL that would be executed would be something like this:
+會產生如下的 SQL：
+
 
 ```sql
 SELECT COUNT (*) AS count_all, status AS status
@@ -718,19 +763,20 @@ FROM "orders"
 GROUP BY status
 ```
 
-Having
-------
+7 Having
+---------
 
-SQL uses the `HAVING` clause to specify conditions on the `GROUP BY` fields. You can add the `HAVING` clause to the SQL fired by the `Model.find` by adding the `having` method to the find.
 
-For example:
+在 SQL 裡，可以使用`HAVING`子句來對`GROUP BY`欄位下條件。您可以在`Model.find`加入`having`方法來使用 SQL 的`HAVING`。例如：
+
 
 ```ruby
 Order.select("date(created_at) as ordered_date, sum(price) as total_price").
   group("date(created_at)").having("sum(price) > ?", 100)
 ```
 
-The SQL that would be executed would be something like this:
+會執行如下的 SQL：
+
 
 ```sql
 SELECT date(created_at) as ordered_date, sum(price) as total_price
@@ -741,18 +787,19 @@ HAVING sum(price) > 100
 
 This returns the date and total price for each order object, grouped by the day they were ordered and where the price is more than $100.
 
-Overriding Conditions
+8 覆蓋條件
 ---------------------
 
-### `unscope`
+### 8.1`unscope`
 
-You can specify certain conditions to be removed using the `unscope` method. For example:
+使用`unscope`可以移除特定的條件，例如：
+
 
 ```ruby
 Article.where('id > 10').limit(20).order('id asc').unscope(:order)
 ```
 
-The SQL that would be executed:
+會執行如下的 SQL：
 
 ```sql
 SELECT * FROM articles WHERE id > 10 LIMIT 20
@@ -762,13 +809,14 @@ SELECT * FROM articles WHERE id > 10 ORDER BY id asc LIMIT 20
 
 ```
 
-You can also unscope specific `where` clauses. For example:
+也可以`unscope`特定的`where`子句，例如：
 
 ```ruby
 Article.where(id: 10, trashed: false).unscope(where: :id)
 # SELECT "articles".* FROM "articles" WHERE trashed = 0
 ```
 
+使用了`unscope`的 relation 會影響所有與其合併的 relation：
 A relation which has used `unscope` will affect any relation into which it is merged:
 
 ```ruby
@@ -776,15 +824,15 @@ Article.order('id asc').merge(Article.unscope(:order))
 # SELECT "articles".* FROM "articles"
 ```
 
-### `only`
+### 8.2`only`
 
-You can also override conditions using the `only` method. For example:
+使用`only`可以留下特定的條件，例如：
 
 ```ruby
 Article.where('id > 10').limit(20).order('id desc').only(:order, :where)
 ```
 
-The SQL that would be executed:
+會執行如下的 SQL：
 
 ```sql
 SELECT * FROM articles WHERE id > 10 ORDER BY id DESC
@@ -794,9 +842,10 @@ SELECT "articles".* FROM "articles" WHERE (id > 10) ORDER BY id desc LIMIT 20
 
 ```
 
-### `reorder`
+### 8.3`reorder`
 
-The `reorder` method overrides the default scope order. For example:
+
+使用`reorder`可以覆蓋預設的排序方式，例如：
 
 ```ruby
 class Article < ApplicationRecord
@@ -806,78 +855,81 @@ end
 Article.find(10).comments.reorder('name')
 ```
 
-The SQL that would be executed:
+會執行如下的 SQL：
 
 ```sql
 SELECT * FROM articles WHERE id = 10
 SELECT * FROM comments WHERE article_id = 10 ORDER BY name
 ```
 
-In the case where the `reorder` clause is not used, the SQL executed would be:
+如果沒有使用`reorder`的話，會執行如下的 SQL：
 
 ```sql
 SELECT * FROM articles WHERE id = 10
 SELECT * FROM comments WHERE article_id = 10 ORDER BY posted_at DESC
 ```
 
-### `reverse_order`
+### 8.4`reverse_order`
 
-The `reverse_order` method reverses the ordering clause if specified.
+使用`reverse_order`可以反轉已宣告的排序方式。
 
 ```ruby
 Client.where("orders_count > 10").order(:name).reverse_order
 ```
 
-The SQL that would be executed:
+會執行如下的 SQL：
 
 ```sql
 SELECT * FROM clients WHERE orders_count > 10 ORDER BY name DESC
 ```
 
-If no ordering clause is specified in the query, the `reverse_order` orders by the primary key in reverse order.
+如果查詢裡沒有宣告排序方式，則會依照主鍵的相反順序來排序：
 
 ```ruby
 Client.where("orders_count > 10").reverse_order
 ```
 
-The SQL that would be executed:
+會執行如下的 SQL：
 
 ```sql
 SELECT * FROM clients WHERE orders_count > 10 ORDER BY clients.id DESC
 ```
 
-This method accepts **no** arguments.
+`reverse_order`**不接受參數**。
 
-### `rewhere`
 
-The `rewhere` method overrides an existing, named where condition. For example:
+### 8.5`rewhere`
+
+使用`rewhere`可以覆蓋既有的`where`條件，例如：
+
 
 ```ruby
 Article.where(trashed: true).rewhere(trashed: false)
 ```
 
-The SQL that would be executed:
+會執行如下的 SQL：
 
 ```sql
 SELECT * FROM articles WHERE `trashed` = 0
 ```
 
-In case the `rewhere` clause is not used,
+若沒有使用`rewhere`：
 
 ```ruby
 Article.where(trashed: true).where(trashed: false)
 ```
 
-the SQL executed would be:
+則會執行如下的 SQL：
 
 ```sql
 SELECT * FROM articles WHERE `trashed` = 1 AND `trashed` = 0
 ```
 
-Null Relation
+9 空 Relation
 -------------
 
-The `none` method returns a chainable relation with no records. Any subsequent conditions chained to the returned relation will continue generating empty relations. This is useful in scenarios where you need a chainable response to a method or a scope that could return zero results.
+使用`none`方法會回傳一個空的、可連鎖使用的 relation。接在回傳的 relation 後的所有條件都會回傳空的 relation。當回傳的 relation 可能是空的，又需要可以連鎖使用時，就可以用這個方法。
+
 
 ```ruby
 Article.none # returns an empty Relation and fires no queries.
@@ -899,10 +951,10 @@ def visible_articles
 end
 ```
 
-Readonly Objects
+10 唯讀物件
 ----------------
 
-Active Record provides the `readonly` method on a relation to explicitly disallow modification of any of the returned objects. Any attempt to alter a readonly record will not succeed, raising an `ActiveRecord::ReadOnlyRecord` exception.
+Active Record 提供了`readonly`方法來禁止修改回傳的物件。只要試圖更改唯獨的紀錄，就會拋出`ActiveRecord::ReadOnlyRecord`異常。
 
 ```ruby
 client = Client.readonly.first
@@ -910,25 +962,28 @@ client.visits += 1
 client.save
 ```
 
-As `client` is explicitly set to be a readonly object, the above code will raise an `ActiveRecord::ReadOnlyRecord` exception when calling `client.save` with an updated value of _visits_.
+由於`client`已經設成唯獨物件，所以上例程式碼進行到`client.save`的時候就會拋出`ActiveRecord::ReadOnlyRecord`異常，因為 _visits_ 的植被改變了。
 
-Locking Records for Update
+
+11 更新時鎖定記錄 
 --------------------------
 
-Locking is helpful for preventing race conditions when updating records in the database and ensuring atomic updates.
+鎖定能避免更新記錄時的 race condition (競態條件) 並確保更新是原子性的 (atomic)。
 
-Active Record provides two locking mechanisms:
+Active Record 提供了兩種鎖定機制：
 
-* Optimistic Locking
-* Pessimistic Locking
+* 樂觀鎖定 (Optimistic Locking)
+* 悲觀鎖定 (Pessimistic Locking)
 
-### Optimistic Locking
+### 11.1 樂觀鎖定
 
-Optimistic locking allows multiple users to access the same record for edits, and assumes a minimum of conflicts with the data. It does this by checking whether another process has made changes to a record since it was opened. An `ActiveRecord::StaleObjectError` exception is thrown if that has occurred and the update is ignored.
+透過檢查記錄從資料庫取出後，是否有其他程序修改此記錄，樂觀鎖定可讓多個使用者編輯相同的紀錄，並假設發生資料衝突的可能性最小。若有人同時修改此記錄，會拋出`ActiveRecord::StaleObjectError`異常，並忽略更新。
 
-**Optimistic locking column**
 
-In order to use optimistic locking, the table needs to have a column called `lock_version` of type integer. Each time the record is updated, Active Record increments the `lock_version` column. If an update request is made with a lower value in the `lock_version` field than is currently in the `lock_version` column in the database, the update request will fail with an `ActiveRecord::StaleObjectError`. Example:
+**樂觀鎖定欄位**
+
+要使用樂觀鎖定，需要在資料表加一欄叫做`lock_version`的整數欄位。每次更新記錄，Active Record 就會增加`lock_version`欄位。如果要更新一筆記錄，它的`lock_version`值比現在資料庫中的`lock_version`值還要小的話，會無法更新且拋出`ActiveRecord::StaleObjectError`異常。例如：
+
 
 ```ruby
 c1 = Client.find(1)
@@ -941,11 +996,11 @@ c2.name = "should fail"
 c2.save # Raises an ActiveRecord::StaleObjectError
 ```
 
-You're then responsible for dealing with the conflict by rescuing the exception and either rolling back, merging, or otherwise apply the business logic needed to resolve the conflict.
+接著您就要負責處理衝突，解決異常。看是要回滾、合併、或是運用商務邏輯來解決衝突。
 
-This behavior can be turned off by setting `ActiveRecord::Base.lock_optimistically = false`.
+這個行為可以透過設定`ActiveRecord::Base.lock_optimistically = false`來關掉。
 
-To override the name of the `lock_version` column, `ActiveRecord::Base` provides a class attribute called `locking_column`:
+`lock_version`欄位名稱可以透過`ActiveRecord::Base`提供的類別屬性`locking_column`來覆蓋：
 
 ```ruby
 class Client < ApplicationRecord
@@ -953,11 +1008,11 @@ class Client < ApplicationRecord
 end
 ```
 
-### Pessimistic Locking
+### 11.2 悲觀鎖定
 
-Pessimistic locking uses a locking mechanism provided by the underlying database. Using `lock` when building a relation obtains an exclusive lock on the selected rows. Relations using `lock` are usually wrapped inside a transaction for preventing deadlock conditions.
+悲觀鎖定使用資料庫提供的鎖定機制。在建立 relation 的時候使用`lock`，可以將選取的列做互斥鎖定。使用`lock`的 relation 通常會包在 transaction 中，以避免死鎖的情況發生。
 
-For example:
+例如：
 
 ```ruby
 Item.transaction do
@@ -967,7 +1022,7 @@ Item.transaction do
 end
 ```
 
-The above session produces the following SQL for a MySQL backend:
+上述在 MySQL 會產生如下的 SQL：
 
 ```sql
 SQL (0.2ms)   BEGIN
@@ -976,7 +1031,8 @@ Item Update (0.4ms)   UPDATE `items` SET `updated_at` = '2009-02-07 18:05:56', `
 SQL (0.8ms)   COMMIT
 ```
 
-You can also pass raw SQL to the `lock` method for allowing different types of locks. For example, MySQL has an expression called `LOCK IN SHARE MODE` where you can lock a record but still allow other queries to read it. To specify this expression just pass it in as the lock option:
+您也可以在`lock`方法傳入純 SQL 來使用不同種類的鎖定。例如，MySQL 的`LOCK IN SHARE MODE`可以鎖定一筆記錄但同時允許其他查詢來讀取。直接傳入 lock 就可以了：
+
 
 ```ruby
 Item.transaction do
@@ -985,7 +1041,7 @@ Item.transaction do
 end
 ```
 
-If you already have an instance of your model, you can start a transaction and acquire the lock in one go using the following code:
+若已經有 model 的實體，可以用以下的寫法來將操作包在 transaction 裡並同時鎖定：
 
 ```ruby
 item = Item.first
@@ -996,37 +1052,35 @@ item.with_lock do
 end
 ```
 
-Joining Tables
+12 連接資料表
 --------------
 
-Active Record provides two finder methods for specifying `JOIN` clauses on the
-resulting SQL: `joins` and `left_outer_joins`.
-While `joins` should be used for `INNER JOIN` or custom queries,
-`left_outer_joins` is used for queries using `LEFT OUTER JOIN`.
+Active Record 提供了`joins`與`left_outer_joins`兩種方法，來對 SQL 指定`JOIN`子句。`joins`要用在`INNER JOIN`或自訂的查詢，`left_outer_joins`則是用在有使用`LEFT OUTER JOIN`的查詢。
 
-### `joins`
 
-There are multiple ways to use the `joins` method.
+### 12.1`joins`
 
-#### Using a String SQL Fragment
+`joins`方法有很多種使用方式。
 
-You can just supply the raw SQL specifying the `JOIN` clause to `joins`:
+#### 12.1.1 使用字串形式的 SQL 片段 
+
+可以直接在`joins`中傳入純 SQL 來指定`JOIN`：
 
 ```ruby
 Author.joins("INNER JOIN posts ON posts.author_id = author.id AND posts.published = 't'")
 ```
 
-This will result in the following SQL:
+這會產生如下的 SQL：
 
 ```sql
 SELECT clients.* FROM clients INNER JOIN posts ON posts.author_id = author.id AND posts.published = 't'
 ```
 
-#### Using Array/Hash of Named Associations
+#### 12.1.2 使用關聯名稱的陣列或 Hash 形式
 
-Active Record lets you use the names of the [associations](association_basics.html) defined on the model as a shortcut for specifying `JOIN` clauses for those associations when using the `joins` method.
+Active Record 讓您使用 model 中定義的[關聯](association_basics.html)名稱，作為使用`joins`時替關聯指定`JOIN`子句的捷徑。
 
-For example, consider the following `Category`, `Article`, `Comment`, `Guest` and `Tag` models:
+例如，以下有`Category`、`Article`、`Comment`、`Guest`以及`Tag`models：
 
 ```ruby
 class Category < ApplicationRecord
@@ -1053,30 +1107,31 @@ class Tag < ApplicationRecord
 end
 ```
 
-Now all of the following will produce the expected join queries using `INNER JOIN`:
+接下來的方法都會使用`INNER JOIN`來產生連接查詢 (join query)：
 
-##### Joining a Single Association
+##### 12.1.2.1 連接單個關聯
 
 ```ruby
 Category.joins(:articles)
 ```
 
-This produces:
+這會產生：
 
 ```sql
 SELECT categories.* FROM categories
   INNER JOIN articles ON articles.category_id = categories.id
 ```
 
-Or, in English: "return a Category object for all categories with articles". Note that you will see duplicate categories if more than one article has the same category. If you want unique categories, you can use `Category.joins(:articles).distinct`.
+用白話來說就是：「依文章分類來回傳分類物件」。注意，若不同的文章有相同的類別，則會看到重複的分類物件。若想要去掉重複結果，可以使用`Category.joins(:articles).distinct`。
 
-#### Joining Multiple Associations
+
+#### 12.1.3 連接多個關聯
 
 ```ruby
 Article.joins(:category, :comments)
 ```
 
-This produces:
+這會產生：
 
 ```sql
 SELECT articles.* FROM articles
@@ -1084,15 +1139,16 @@ SELECT articles.* FROM articles
   INNER JOIN comments ON comments.article_id = articles.id
 ```
 
-Or, in English: "return all articles that have a category and at least one comment". Note again that articles with multiple comments will show up multiple times.
+也就是：「依分類來回傳文章物件，且至少有一則評論」。再次注意，若文章有數則評論則會重複出現。
 
-##### Joining Nested Associations (Single Level)
+
+##### 12.1.3.1 連接單層嵌套關聯 (nested association) 
 
 ```ruby
 Article.joins(comments: :guest)
 ```
 
-This produces:
+這會產生：
 
 ```sql
 SELECT articles.* FROM articles
@@ -1100,15 +1156,16 @@ SELECT articles.* FROM articles
   INNER JOIN guests ON guests.comment_id = comments.id
 ```
 
-Or, in English: "return all articles that have a comment made by a guest."
+也就是：「回傳所有有訪客評論的文章」。
 
-##### Joining Nested Associations (Multiple Level)
+
+##### 12.1.3.2 連接多層嵌套關聯
 
 ```ruby
 Category.joins(articles: [{ comments: :guest }, :tags])
 ```
 
-This produces:
+這會產生：
 
 ```sql
 SELECT categories.* FROM categories
@@ -1118,54 +1175,58 @@ SELECT categories.* FROM categories
   INNER JOIN tags ON tags.article_id = articles.id
 ```
 
-Or, in English: "return all categories that have articles, where those articles have a comment made by a guest, and where those articles also have a tag."
+也就是：「回傳所有具備下列條件的分類：有文章，且文章有訪客評論和標籤。」
 
-#### Specifying Conditions on the Joined Tables
 
-You can specify conditions on the joined tables using the regular [Array](#array-conditions) and [String](#pure-string-conditions) conditions. [Hash conditions](#hash-conditions) provide a special syntax for specifying conditions for the joined tables:
+#### 12.1.4 對連接的資料表指定條件
+
+
+您可以使用一般的[陣列](#array-conditions)與[字串](#pure-string-conditions) 條件來對連接的資料表指定條件。[Hash 條件](#hash-conditions)則提供了特殊的語法來指定： 
 
 ```ruby
 time_range = (Time.now.midnight - 1.day)..Time.now.midnight
 Client.joins(:orders).where('orders.created_at' => time_range)
 ```
 
-An alternative and cleaner syntax is to nest the hash conditions:
+使用嵌套的 hash 條件可以寫得更簡潔：
+
 
 ```ruby
 time_range = (Time.now.midnight - 1.day)..Time.now.midnight
 Client.joins(:orders).where(orders: { created_at: time_range })
 ```
 
-This will find all clients who have orders that were created yesterday, again using a `BETWEEN` SQL expression.
+這會用 SQL 的`BETWEEN`來找到所有昨天下訂單的客戶。
 
-### `left_outer_joins`
 
-If you want to select a set of records whether or not they have associated
-records you can use the `left_outer_joins` method.
+### 12.2`left_outer_joins`
+
+若想要選取一組不論有無關聯的記錄，可以用`left_outer_joins`方法。
 
 ```ruby
 Author.left_outer_joins(:posts).distinct.select('authors.*, COUNT(posts.*) AS posts_count').group('authors.id')
 ```
 
-Which produces:
+這會產生：
 
 ```sql
 SELECT DISTINCT authors.*, COUNT(posts.*) AS posts_count FROM "authors"
 LEFT OUTER JOIN posts ON posts.author_id = authors.id GROUP BY authors.id
 ```
 
-Which means: "return all authors with their count of posts, whether or not they
-have any posts at all"
+也就是：「連帶發文數量回傳所有的作者，不論他們到底有沒有發文。」
 
 
-Eager Loading Associations
+13 Eager Loading 關聯
 --------------------------
 
-Eager loading is the mechanism for loading the associated records of the objects returned by `Model.find` using as few queries as possible.
+Eager Loading 是一種機制，能用最少的查詢次數來載入`Model.find`回傳物件的關聯記錄。
 
-**N + 1 queries problem**
 
-Consider the following code, which finds 10 clients and prints their postcodes:
+**N + 1 查詢問題**
+
+下列的程式碼會找到 10 個客戶並印出他們的郵遞區號：
+
 
 ```ruby
 clients = Client.limit(10)
@@ -1175,13 +1236,14 @@ clients.each do |client|
 end
 ```
 
-This code looks fine at the first sight. But the problem lies within the total number of queries executed. The above code executes 1 (to find 10 clients) + 10 (one per each client to load the address) = **11** queries in total.
+乍看之下可能沒什麼問題，然而，問題出在查詢的執行次數。上面的程式碼會執行 1 次查詢 (找到 10 個客戶) + 10 次查詢 (從每個用戶載入地址) = 總共 **11** 次查詢。
 
-**Solution to N + 1 queries problem**
 
-Active Record lets you specify in advance all the associations that are going to be loaded. This is possible by specifying the `includes` method of the `Model.find` call. With `includes`, Active Record ensures that all of the specified associations are loaded using the minimum possible number of queries.
+**N + 1 查詢問題解決辦法**
 
-Revisiting the above case, we could rewrite `Client.limit(10)` to eager load addresses:
+Active Record 可以讓您在事前指定所有要載入的關聯，只要在呼叫`Model.find`時宣告`includes`方法就可以了。有了`includes`，Active Record 會確保用最少的查詢次數來載入所有指定的關聯。
+
+回到剛剛的例子，我們可以把`Client.limit(10)`用 eager load 改寫：
 
 ```ruby
 clients = Client.includes(:address).limit(10)
@@ -1191,7 +1253,8 @@ clients.each do |client|
 end
 ```
 
-The above code will execute just **2** queries, as opposed to **11** queries in the previous case:
+上述程式碼只會執行 **2** 次查詢，而不像之前會執行 **11** 次：
+
 
 ```sql
 SELECT * FROM clients LIMIT 10
@@ -1199,65 +1262,67 @@ SELECT addresses.* FROM addresses
   WHERE (addresses.client_id IN (1,2,3,4,5,6,7,8,9,10))
 ```
 
-### Eager Loading Multiple Associations
+### 13.1 Eager Loading 多個關聯
 
-Active Record lets you eager load any number of associations with a single `Model.find` call by using an array, hash, or a nested hash of array/hash with the `includes` method.
+Active Record 讓您在`includes`方法中使用陣列、hash、或嵌套 hash (內有陣列、hash) ，只需呼叫一次`Model.find`就可以載入任意數量的關聯。
 
-#### Array of Multiple Associations
+#### 13.1.1 有多個關聯的陣列
 
 ```ruby
 Article.includes(:category, :comments)
 ```
 
-This loads all the articles and the associated category and comments for each article.
+這會載入所有的文章，以及每篇文章的類別與評論。
 
-#### Nested Associations Hash
+
+#### 13.1.2 嵌套關聯 Hash
 
 ```ruby
 Category.includes(articles: [{ comments: :guest }, :tags]).find(1)
 ```
 
-This will find the category with id 1 and eager load all of the associated articles, the associated articles' tags and comments, and every comment's guest association.
+這會找到 id 為 1 的類別，並載入所有關聯的文章、文章的標籤與評論、以及每則評論的關聯訪客。
 
-### Specifying Conditions on Eager Loaded Associations
 
-Even though Active Record lets you specify conditions on the eager loaded associations just like `joins`, the recommended way is to use [joins](#joining-tables) instead.
+### 13.2 對 Eager Loaded 關聯下條件
 
-However if you must do this, you may use `where` as you would normally.
+雖然 Active Record 允許您像`joins`那樣來對 eager loaded 關聯下條件，但仍建議使用[連接資料表](#joining-tables)。
+
+若堅持要這麼做，可以像平常那樣使用`where`：
+
 
 ```ruby
 Article.includes(:comments).where(comments: { visible: true })
 ```
 
-This would generate a query which contains a `LEFT OUTER JOIN` whereas the
-`joins` method would generate one using the `INNER JOIN` function instead.
+這會產生有`LEFT OUTER JOIN`語句的查詢，`joins`方法則是產生`INNER JOIN`。
+
 
 ```ruby
   SELECT "articles"."id" AS t0_r0, ... "comments"."updated_at" AS t1_r5 FROM "articles" LEFT OUTER JOIN "comments" ON "comments"."article_id" = "articles"."id" WHERE (comments.visible = 1)
 ```
 
-If there was no `where` condition, this would generate the normal set of two queries.
+若沒有`where`條件，則會像平常一樣產生兩組查詢。
 
-NOTE: Using `where` like this will only work when you pass it a Hash. For
-SQL-fragments you need to use `references` to force joined tables:
+
+NOTE: 像這樣使用`where`只有在傳入 Hash 時才有用。若要傳入 SQL 片段，則需要用`refrences`來強制連接資料表：
 
 ```ruby
 Article.includes(:comments).where("comments.visible = true").references(:comments)
 ```
 
-If, in the case of this `includes` query, there were no comments for any
-articles, all the articles would still be loaded. By using `joins` (an INNER
-JOIN), the join conditions **must** match, otherwise no records will be
-returned.
+上例的`includes`查詢，就算文章都沒有評論，仍會載入所有文章。若是使用`joins`(INNER JOIN)，則**必須**要符合連接條件，否則不會回傳任何記錄。
 
 
 
-Scopes
-------
 
-Scoping allows you to specify commonly-used queries which can be referenced as method calls on the association objects or models. With these scopes, you can use every method previously covered such as `where`, `joins` and `includes`. All scope methods will return an `ActiveRecord::Relation` object which will allow for further methods (such as other scopes) to be called on it.
+14 作用域
+--------
 
-To define a simple scope, we use the `scope` method inside the class, passing the query that we'd like to run when this scope is called:
+作用域 (scope) 可以讓您將常用的查詢定義成關聯物件或 model 的方法。有了作用域，就可以使用之前提過的每一種方法，像是`where`、`joins`與`includes`。所有的作用域方法都會回傳一個`ActiveRecord::Relation`物件，來允許呼叫更多的方法 (像是其他作用域)。
+
+現在就來定義一個簡單的作用域。在類別中使用`scope`方法，並傳入呼叫此作用域時想要執行的查詢：
+
 
 ```ruby
 class Article < ApplicationRecord
@@ -1265,7 +1330,8 @@ class Article < ApplicationRecord
 end
 ```
 
-This is exactly the same as defining a class method, and which you use is a matter of personal preference:
+這與定義一個類別方法完全相同，至於要用哪個就看個人喜好了：
+
 
 ```ruby
 class Article < ApplicationRecord
@@ -1275,7 +1341,7 @@ class Article < ApplicationRecord
 end
 ```
 
-Scopes are also chainable within scopes:
+作用域也可以與其他作用域連鎖使用：
 
 ```ruby
 class Article < ApplicationRecord
@@ -1284,22 +1350,22 @@ class Article < ApplicationRecord
 end
 ```
 
-To call this `published` scope we can call it on either the class:
+要呼叫`published`作用域，可以在類別上呼叫：
 
 ```ruby
 Article.published # => [published articles]
 ```
 
-Or on an association consisting of `Article` objects:
+也可以對由`Article`物件組成的關聯使用：
 
 ```ruby
 category = Category.first
 category.articles.published # => [published articles belonging to this category]
 ```
 
-### Passing in arguments
+### 14.1 傳入參數 
 
-Your scope can take arguments:
+作用域可以傳入參數：
 
 ```ruby
 class Article < ApplicationRecord
@@ -1307,13 +1373,14 @@ class Article < ApplicationRecord
 end
 ```
 
-Call the scope as if it were a class method:
+可以像呼叫類別方法那樣呼叫作用域：
 
 ```ruby
 Article.created_before(Time.zone.now)
 ```
 
-However, this is just duplicating the functionality that would be provided to you by a class method.
+然而，這只是重複做了類別方法可以做到的事。
+
 
 ```ruby
 class Article < ApplicationRecord
@@ -1323,15 +1390,16 @@ class Article < ApplicationRecord
 end
 ```
 
-Using a class method is the preferred way to accept arguments for scopes. These methods will still be accessible on the association objects:
+要讓作用域接受參數的話，建議使用類別方法。這些方法仍可以在關聯物件上使用：
+
 
 ```ruby
 category.articles.created_before(time)
 ```
 
-### Using conditionals
+### 14.2 使用條件式
 
-Your scope can utilize conditionals:
+作用域可以使用條件式：
 
 ```ruby
 class Article < ApplicationRecord
@@ -1339,7 +1407,7 @@ class Article < ApplicationRecord
 end
 ```
 
-Like the other examples, this will behave similarly to a class method.
+如同其他的例子，這跟類別方法很類似。
 
 ```ruby
 class Article < ApplicationRecord
@@ -1349,10 +1417,12 @@ class Article < ApplicationRecord
 end
 ```
 
-However, there is one important caveat: A scope will always return an `ActiveRecord::Relation` object, even if the conditional evaluates to `false`, whereas a class method, will return `nil`. This can cause `NoMethodError` when chaining class methods with conditionals, if any of the conditionals return `false`.
+然而，有很重要的一點要注意：作用域總是會回傳一個`ActiveRecord::Relation`物件，就算條件式判斷為`false`也一樣，而類別方法則會回傳`nil`。這在使用條件式串接類別方法時，若條件式回傳`false`，會造成`NoMethodError`。
 
-### Applying a default scope
 
+### 14.3 使用預設的作用域 Applying a default scope
+
+若想要對 model 中所有的查詢使用同一個作用域，可以在 model 中使用`default_scope`方法。
 If we wish for a scope to be applied across all queries to the model we can use the
 `default_scope` method within the model itself.
 
@@ -1362,6 +1432,7 @@ class Client < ApplicationRecord
 end
 ```
 
+當在這個 model 上執行查詢，SQL 語句看起來會是：
 When queries are executed on this model, the SQL query will now look something like
 this:
 
@@ -1369,8 +1440,8 @@ this:
 SELECT * FROM clients WHERE removed_at IS NULL
 ```
 
-If you need to do more complex things with a default scope, you can alternatively
-define it as a class method:
+若想要預設的作用域做更多複雜的事，可以將它定義為類別方法：
+
 
 ```ruby
 class Client < ApplicationRecord
@@ -1380,8 +1451,7 @@ class Client < ApplicationRecord
 end
 ```
 
-NOTE: The `default_scope` is also applied while creating/building a record.
-It is not applied while updating a record. E.g.:
+NOTE: `default_scope`在建立記錄時也會執行，但更新時不會，像是： 
 
 ```ruby
 class Client < ApplicationRecord
@@ -1392,9 +1462,9 @@ Client.new          # => #<Client id: nil, active: true>
 Client.unscoped.new # => #<Client id: nil, active: nil>
 ```
 
-### Merging of scopes
+### 14.4 合併作用域 
 
-Just like `where` clauses scopes are merged using `AND` conditions.
+就像`where`一樣，作用域可以用 SQL 的`AND`來合併。
 
 ```ruby
 class User < ApplicationRecord
@@ -1406,24 +1476,20 @@ User.active.inactive
 # SELECT "users".* FROM "users" WHERE "users"."state" = 'active' AND "users"."state" = 'inactive'
 ```
 
-We can mix and match `scope` and `where` conditions and the final sql
-will have all conditions joined with `AND`.
+`scope`作用域與`where`條件可以混合使用，最終的 SQL 會用`AND`來把所有條件接起來。
 
 ```ruby
 User.active.where(state: 'finished')
 # SELECT "users".* FROM "users" WHERE "users"."state" = 'active' AND "users"."state" = 'finished'
 ```
-
-If we do want the last `where` clause to win then `Relation#merge` can
-be used.
+如果要讓最後一個`where`條件覆蓋先前的，可以使用`Relation#merge`。
 
 ```ruby
 User.active.merge(User.inactive)
 # SELECT "users".* FROM "users" WHERE "users"."state" = 'inactive'
 ```
 
-One important caveat is that `default_scope` will be prepended in
-`scope` and `where` conditions.
+請注意，`default_scope`會被`scope`作用域和`where`條件覆蓋掉。
 
 ```ruby
 class User < ApplicationRecord
@@ -1442,20 +1508,20 @@ User.where(state: 'inactive')
 # SELECT "users".* FROM "users" WHERE "users"."state" = 'pending' AND "users"."state" = 'inactive'
 ```
 
-As you can see above the `default_scope` is being merged in both
-`scope` and `where` conditions.
+從上面可以看到，`default_scope`被`scope`與`where`覆蓋掉了。
 
-### Removing All Scoping
 
-If we wish to remove scoping for any reason we can use the `unscoped` method. This is
-especially useful if a `default_scope` is specified in the model and should not be
-applied for this particular query.
+### 14.5 移除所有作用域
+
+若想要移除作用域，可以用`unscoped`方法。這在特定的查詢不需要用到`default_scope`的時候很有用。
+
 
 ```ruby
 Client.unscoped.load
 ```
 
-This method removes all scoping and will do a normal query on the table.
+`unscoped`方法會移除所有作用域，接著對資料表做普通的查詢。
+
 
 ```ruby
 Client.unscoped.all
@@ -1465,7 +1531,7 @@ Client.where(published: false).unscoped.all
 # SELECT "clients".* FROM "clients"
 ```
 
-`unscoped` can also accept a block.
+`unscoped`也接受區塊。
 
 ```ruby
 Client.unscoped {
@@ -1473,18 +1539,19 @@ Client.unscoped {
 }
 ```
 
-Dynamic Finders
+15 動態查詢方法
 ---------------
 
-For every field (also known as an attribute) you define in your table, Active Record provides a finder method. If you have a field called `first_name` on your `Client` model for example, you get `find_by_first_name` for free from Active Record. If you have a `locked` field on the `Client` model, you also get `find_by_locked` method.
+Active Record 對每個資料表裡定義的欄位（又稱屬性），都提供了一個 finder 方法。假設您的`Client`model 中有個欄位叫做`first_name`，Active Record 就會提供一個`find_by_first_name`方法。若`Client`model 有`locked`欄位，就有`find_by_locked`可以用。
 
-You can specify an exclamation point (`!`) on the end of the dynamic finders to get them to raise an `ActiveRecord::RecordNotFound` error if they do not return any records, like `Client.find_by_name!("Ryan")`
+若在動態查詢方法名稱的最後加上驚嘆號（`!`），當它們沒有回傳任何記錄時，就會拋出`ActiveRecord::RecordNotFound`異常，像是`Client.find_by_name!("Ryan")`。
 
-If you want to find both by name and locked, you can chain these finders together by simply typing "`and`" between the fields. For example, `Client.find_by_first_name_and_locked("Ryan", true)`.
+若想同時查找 name 與 locked 欄位，可以在方法中間使用`and`來連接。例如，`Client.find_by_first_name_and_locked("Ryan", true)`。
 
-Enums
------
+16 Enums
+---------
 
+`enum`巨集會將一欄整數 map 成一組值。
 The `enum` macro maps an integer column to a set of possible values.
 
 ```ruby
@@ -1493,9 +1560,7 @@ class Book < ApplicationRecord
 end
 ```
 
-This will automatically create the corresponding [scopes](#scopes) to query the
-model. Methods to transition between states and query the current state are also
-added.
+這會自動產生對應的[作用域](#scopes)來查詢 model。也加入了在狀態和查詢目前的狀態間轉換的方法。
 
 ```ruby
 # Both examples below query just available books.
@@ -1509,25 +1574,21 @@ book.unavailable! # => true
 book.available?   # => false
 ```
 
-Read the full documentation about enums
-[in the Rails API docs](http://api.rubyonrails.org/classes/ActiveRecord/Enum.html).
+在[Rails API 文件](http://api.rubyonrails.org/classes/ActiveRecord/Enum.html)有 enums 完整的說明。
 
-Understanding The Method Chaining
----------------------------------
+17 了解方法鏈
+--------------
 
-The Active Record pattern implements [Method Chaining](http://en.wikipedia.org/wiki/Method_chaining),
-which allow us to use multiple Active Record methods together in a simple and straightforward way.
+Active Record 提供了[方法鏈](http://en.wikipedia.org/wiki/Method_chaining)的形式，可以輕易的同時使用多個 Active Record 方法。
 
-You can chain methods in a statement when the previous method called returns an
-`ActiveRecord::Relation`, like `all`, `where`, and `joins`. Methods that return
-a single object (see [Retrieving a Single Object Section](#retrieving-a-single-object))
-have to be at the end of the statement.
+要能夠連接方法，前一個呼叫的方法必須回傳一個`ActiveRecord::Relation`，像是
+`all`、`where`、與`joins`。只回傳單一物件的方法（請參閱[取出單一物件](#retrieving-a-single-object)）必須放在最後面。
 
-There are some examples below. This guide won't cover all the possibilities, just a few as examples.
-When an Active Record method is called, the query is not immediately generated and sent to the database,
-this just happens when the data is actually needed. So each example below generates a single query.
 
-### Retrieving filtered data from multiple tables
+接著會舉一些例子。這篇指南不會列出所有可能的組合，只會舉一些來當範例。當呼叫一個 Active Record 方法時，除非需要資料，不然不會馬上產生查詢。所以下列的例子都會產生一個單一查詢。
+
+
+### 17.1 從數個資料表取出篩選過的資料 Retrieving filtered data from multiple tables
 
 ```ruby
 Person
@@ -1536,7 +1597,7 @@ Person
   .where('comments.created_at > ?', 1.week.ago)
 ```
 
-The result should be something like this:
+這會產生如下的結果：
 
 ```sql
 SELECT people.id, people.name, comments.text
@@ -1546,8 +1607,7 @@ INNER JOIN comments
 WHERE comments.created_at = '2015-01-01'
 ```
 
-### Retrieving specific data from multiple tables
-
+### 17.2 從數個資料表取出特定的資料 
 ```ruby
 Person
   .select('people.id, people.name, companies.name')
@@ -1555,7 +1615,7 @@ Person
   .find_by('people.name' => 'John') # this should be the last
 ```
 
-The above should generate:
+這會產生：
 
 ```sql
 SELECT people.id, people.name, companies.name
@@ -1566,27 +1626,27 @@ WHERE people.name = 'John'
 LIMIT 1
 ```
 
-NOTE: Note that if a query matches multiple records, `find_by` will
-fetch only the first one and ignore the others (see the `LIMIT 1`
-statement above).
+NOTE: 請注意，若有數比資料符合查詢，`find_by`只會取出第一筆並忽略其他筆資料（請看上面的`LIMIT 1`敘述）。
 
-Find or Build a New Object
---------------------------
+18 查找或新建物件
+-----------------
 
-It's common that you need to find a record or create it if it doesn't exist. You can do that with the `find_or_create_by` and `find_or_create_by!` methods.
+想要查找一個物件，並且要在找不到時新建一個物件，是很常見的情況，這時可以用`find_or_create_by`與`find_or_create_by!`方法。
 
-### `find_or_create_by`
 
-The `find_or_create_by` method checks whether a record with the specified attributes exists. If it doesn't, then `create` is called. Let's see an example.
+### 18.1 `find_or_create_by`
 
-Suppose you want to find a client named 'Andy', and if there's none, create one. You can do so by running:
+`find_or_create_by`方法會檢查有指定屬性的紀錄是否存在。若不存在，就會呼叫`create`。來看看下面的例子吧。
+
+假設現在要找一位名稱為 Andy 的客戶，且找不到的話，就要建立一個。這時可以這樣寫：
+
 
 ```ruby
 Client.find_or_create_by(first_name: 'Andy')
 # => #<Client id: 1, first_name: "Andy", orders_count: 0, locked: true, created_at: "2011-08-30 06:09:27", updated_at: "2011-08-30 06:09:27">
 ```
 
-The SQL generated by this method looks like this:
+這個方法會產生如下的 SQL：
 
 ```sql
 SELECT * FROM clients WHERE (clients.first_name = 'Andy') LIMIT 1
@@ -1595,22 +1655,19 @@ INSERT INTO clients (created_at, first_name, locked, orders_count, updated_at) V
 COMMIT
 ```
 
-`find_or_create_by` returns either the record that already exists or the new record. In our case, we didn't already have a client named Andy so the record is created and returned.
+`find_or_create_by`會回傳已經存在的紀錄或是新建的紀錄。在剛剛的例子裡，由於名稱為 Andy 的客戶不存在，所以會新建該記錄並回傳。
 
-The new record might not be saved to the database; that depends on whether validations passed or not (just like `create`).
+新建的紀錄是否會被存到資料庫裡，取決於是否通過驗證（就跟`create`一樣）。
 
-Suppose we want to set the 'locked' attribute to `false` if we're
-creating a new record, but we don't want to include it in the query. So
-we want to find the client named "Andy", or if that client doesn't
-exist, create a client named "Andy" which is not locked.
+假設現在想在新建記錄時將`locked`屬性設為`false`，但又不想包含在查詢裡。也就是說，想要找一位名為 Andy 的客戶，如果他不存在，就新建一位未鎖定的 Andy 客戶。
 
-We can achieve this in two ways. The first is to use `create_with`:
+有兩種方法可以達成上述的目的。第一種是`create_with`：
 
 ```ruby
 Client.create_with(locked: false).find_or_create_by(first_name: 'Andy')
 ```
 
-The second way is using a block:
+第二種是使用區塊：
 
 ```ruby
 Client.find_or_create_by(first_name: 'Andy') do |c|
@@ -1618,31 +1675,30 @@ Client.find_or_create_by(first_name: 'Andy') do |c|
 end
 ```
 
-The block will only be executed if the client is being created. The
-second time we run this code, the block will be ignored.
+上面的區塊只有在新建客戶的時候才會執行。若客戶已經存在，區塊會被忽略。
 
-### `find_or_create_by!`
 
-You can also use `find_or_create_by!` to raise an exception if the new record is invalid. Validations are not covered on this guide, but let's assume for a moment that you temporarily add
+### 18.2 `find_or_create_by!`
+
+您也可以使用`find_or_create_by!`，這會在新建的紀錄沒有通過驗證時拋出異常。這篇的內容並沒有涵蓋到驗證，但先假設您加了這一行到`Client`model：
 
 ```ruby
 validates :orders_count, presence: true
 ```
 
-to your `Client` model. If you try to create a new `Client` without passing an `orders_count`, the record will be invalid and an exception will be raised:
+這時，若在建立新客戶時沒有傳入`orders_count`，就會拋出`ActiveRecord::RecordInvalid`異常：
+
 
 ```ruby
 Client.find_or_create_by!(first_name: 'Andy')
 # => ActiveRecord::RecordInvalid: Validation failed: Orders count can't be blank
 ```
 
-### `find_or_initialize_by`
+### 18.3 `find_or_initialize_by`
 
-The `find_or_initialize_by` method will work just like
-`find_or_create_by` but it will call `new` instead of `create`. This
-means that a new model instance will be created in memory but won't be
-saved to the database. Continuing with the `find_or_create_by` example, we
-now want the client named 'Nick':
+
+`find_or_initialize_by`方法的運作跟`find_or_create_by`相同，但它在找不到記錄時會呼叫`new`而不是`create`。也就是說，新建的 model 物件會放在記憶體裡，而不是存進資料庫。沿用`find_or_create_by`的例子，現在要找一位名為 Nick 的客戶：
+
 
 ```ruby
 nick = Client.find_or_initialize_by(first_name: 'Nick')
@@ -1655,23 +1711,25 @@ nick.new_record?
 # => true
 ```
 
-Because the object is not yet stored in the database, the SQL generated looks like this:
+由於這個物件還沒存進資料庫，所以產生的 SQL 會像這樣：
+
 
 ```sql
 SELECT * FROM clients WHERE (clients.first_name = 'Nick') LIMIT 1
 ```
 
-When you want to save it to the database, just call `save`:
+若要存進資料庫，可以呼叫`save`：
 
 ```ruby
 nick.save
 # => true
 ```
 
-Finding by SQL
+19 用 SQL 查詢
 --------------
 
-If you'd like to use your own SQL to find records in a table you can use `find_by_sql`. The `find_by_sql` method will return an array of objects even if the underlying query returns just a single record. For example you could run this query:
+若想要用 SQL 來查詢，可以使用`find_by_sql`。這個方法會將查詢到的物件放在陣列裡回傳，就算只找到一筆記錄。舉例來說：
+
 
 ```ruby
 Client.find_by_sql("SELECT * FROM clients
@@ -1684,11 +1742,13 @@ Client.find_by_sql("SELECT * FROM clients
 # ]
 ```
 
-`find_by_sql` provides you with a simple way of making custom calls to the database and retrieving instantiated objects.
+`find_by_sql`能讓您輕易的自訂查詢方式，並取出實體化的物件。
 
-### `select_all`
 
-`find_by_sql` has a close relative called `connection#select_all`. `select_all` will retrieve objects from the database using custom SQL just like `find_by_sql` but will not instantiate them. Instead, you will get an array of hashes where each hash indicates a record.
+### 19.1 `select_all`
+
+`find_by_sql`有一個很類似的方法：`connection#select_all`。`select_all`
+會用自訂的 SQL 從資料庫取出物件，但不會實體化；它會回傳一個 hash 陣列，每個 hash 都表示一筆記錄。
 
 ```ruby
 Client.connection.select_all("SELECT first_name, created_at FROM clients WHERE id = '1'")
@@ -1698,9 +1758,9 @@ Client.connection.select_all("SELECT first_name, created_at FROM clients WHERE i
 # ]
 ```
 
-### `pluck`
+### 19.2 `pluck`
 
-`pluck` can be used to query single or multiple columns from the underlying table of a model. It accepts a list of column names as argument and returns an array of values of the specified columns with the corresponding data type.
+`pluck`可以用來查詢資料表的一個或多個欄位。`pluck`接受欄位名稱作為參數，並回傳由指定欄位的值所組成的陣列。
 
 ```ruby
 Client.where(active: true).pluck(:id)
@@ -1716,7 +1776,7 @@ Client.pluck(:id, :name)
 # => [[1, 'David'], [2, 'Jeremy'], [3, 'Jose']]
 ```
 
-`pluck` makes it possible to replace code like:
+下面這段程式碼：
 
 ```ruby
 Client.select(:id).map { |c| c.id }
@@ -1726,7 +1786,7 @@ Client.select(:id).map(&:id)
 Client.select(:id, :name).map { |c| [c.id, c.name] }
 ```
 
-with:
+可以用`pluck`取代：
 
 ```ruby
 Client.pluck(:id)
@@ -1734,10 +1794,8 @@ Client.pluck(:id)
 Client.pluck(:id, :name)
 ```
 
-Unlike `select`, `pluck` directly converts a database result into a Ruby `Array`,
-without constructing `ActiveRecord` objects. This can mean better performance for
-a large or often-running query. However, any model method overrides will
-not be available. For example:
+與`select`不同，`pluck`會直接將資料庫查詢的結果轉成 Ruby 的陣列，而不會建出`ActiveRecord`物件。這樣可以提昇龐大的、或是需要經常使用的查詢的執行效能。然而，所有 model 可用的方法就不能用了，例如：
+
 
 ```ruby
 class Client < ApplicationRecord
@@ -1753,9 +1811,7 @@ Client.pluck(:name)
 # => ["David", "Jeremy", "Jose"]
 ```
 
-Furthermore, unlike `select` and other `Relation` scopes, `pluck` triggers an immediate
-query, and thus cannot be chained with any further scopes, although it can work with
-scopes already constructed earlier:
+此外，不像`select`與其他`Relation`作用域，`pluck`會馬上啟動查詢，所以只能與已經建立的作用域連鎖使用，而無法與之後的作用域連鎖使用。
 
 ```ruby
 Client.pluck(:name).limit(1)
@@ -1765,9 +1821,10 @@ Client.limit(1).pluck(:name)
 # => ["David"]
 ```
 
-### `ids`
+### 19.3 `ids`
 
-`ids` can be used to pluck all the IDs for the relation using the table's primary key.
+`ids`可以藉由資料表的主鍵來取得 relation 所有的 ID。
+
 
 ```ruby
 Person.ids
@@ -1783,19 +1840,18 @@ Person.ids
 # SELECT person_id FROM people
 ```
 
-Existence of Objects
---------------------
+20 物件存在性 
+---------------
 
-If you simply want to check for the existence of the object there's a method called `exists?`.
-This method will query the database using the same query as `find`, but instead of returning an
-object or collection of objects it will return either `true` or `false`.
+若只是想單純的檢查物件是否存在，可以使用`exists?`。這個方法會使用跟`find`一樣的查詢，但會回傳`true`或`false`，而不是回傳物件。
+
 
 ```ruby
 Client.exists?(1)
 ```
 
-The `exists?` method also takes multiple values, but the catch is that it will return `true` if any
-one of those records exists.
+`exists?`方法可以接受多個值，但要注意的是，只要有任何一筆記錄存在，就會回傳`true`。
+
 
 ```ruby
 Client.exists?(id: [1,2,3])
@@ -1803,67 +1859,71 @@ Client.exists?(id: [1,2,3])
 Client.exists?(name: ['John', 'Sergei'])
 ```
 
-It's even possible to use `exists?` without any arguments on a model or a relation.
+`exists?`就算不傳入任何參數也可以使用。
+
 
 ```ruby
 Client.where(first_name: 'Ryan').exists?
 ```
 
-The above returns `true` if there is at least one client with the `first_name` 'Ryan' and `false`
-otherwise.
+上面的例子中，若有至少一位客戶的`first_name`是 Ryan，就會回傳`true`，否則回傳`false`。
+
 
 ```ruby
 Client.exists?
 ```
 
-The above returns `false` if the `clients` table is empty and `true` otherwise.
+若`Client`資料表是空的，這會回傳`false`，若不是則回傳`true`。
 
-You can also use `any?` and `many?` to check for existence on a model or relation.
+
+也可以在 model 或 relation 上用`any?`與`many?`來檢查記錄是否存在。
+
 
 ```ruby
-# via a model
+# 透過 model
 Article.any?
 Article.many?
 
-# via a named scope
+# 透過作用域名稱
 Article.recent.any?
 Article.recent.many?
 
-# via a relation
+# 透過 relation
 Article.where(published: true).any?
 Article.where(published: true).many?
 
-# via an association
+# 透過關聯
 Article.first.categories.any?
 Article.first.categories.many?
 ```
 
-Calculations
-------------
+21 計算
+---------
 
-This section uses count as an example method in this preamble, but the options described apply to all sub-sections.
+這節會先用 count 當例子，但 count 適用的選項在下面所有子章節也適用。
 
-All calculation methods work directly on a model:
+所有計算方法都可以直接在 model 上呼叫：
 
 ```ruby
 Client.count
 # SELECT count(*) AS count_all FROM clients
 ```
 
-Or on a relation:
+或在 relation 呼叫：
 
 ```ruby
 Client.where(first_name: 'Ryan').count
 # SELECT count(*) AS count_all FROM clients WHERE (first_name = 'Ryan')
 ```
 
-You can also use various finder methods on a relation for performing complex calculations:
+也可以對 relation 使用各種查詢方法來執行複雜的計算：
+
 
 ```ruby
 Client.includes("orders").where(first_name: 'Ryan', orders: { status: 'received' }).count
 ```
 
-Which will execute:
+這會執行下面的 SQL：
 
 ```sql
 SELECT count(DISTINCT clients.id) AS count_all FROM clients
@@ -1871,64 +1931,72 @@ SELECT count(DISTINCT clients.id) AS count_all FROM clients
   (clients.first_name = 'Ryan' AND orders.status = 'received')
 ```
 
-### Count
+### 21.1 Count（計數）
 
-If you want to see how many records are in your model's table you could call `Client.count` and that will return the number. If you want to be more specific and find all the clients with their age present in the database you can use `Client.count(:age)`.
+想知道 model 的資料表裡有多少筆記錄，可以呼叫`Client.count`，會回傳記錄的數量。若要針對特定欄位來查詢，例如查詢所有有年齡的客戶數量，可以用`Client.count(:age)`。
 
-For options, please see the parent section, [Calculations](#calculations).
+可用的選項請參考[計算](#calculations)一節。
 
-### Average
+### 22.2 Average（平均）
 
-If you want to see the average of a certain number in one of your tables you can call the `average` method on the class that relates to the table. This method call will look something like this:
+若要找出資料表特定欄位的平均值，可以用`average`：
+
 
 ```ruby
 Client.average("orders_count")
 ```
 
-This will return a number (possibly a floating point number such as 3.14159265) representing the average value in the field.
+這會回傳該欄位的平均值（可能是浮點數，例如3.14159265）。
 
-For options, please see the parent section, [Calculations](#calculations).
+可用的選項請參考[計算](#calculations)一節。
 
-### Minimum
 
-If you want to find the minimum value of a field in your table you can call the `minimum` method on the class that relates to the table. This method call will look something like this:
+### 22.3 Minimum（最小值）
+
+若要找出資料表特定欄位的最小值，可以用`minimum`：
+
 
 ```ruby
 Client.minimum("age")
 ```
 
-For options, please see the parent section, [Calculations](#calculations).
+可用的選項請參考[計算](#calculations)一節。
 
-### Maximum
 
-If you want to find the maximum value of a field in your table you can call the `maximum` method on the class that relates to the table. This method call will look something like this:
+### 22.4 Maximum（最大值）
+
+若要找出資料表特定欄位的最大值，可以用`maximum`：
+
 
 ```ruby
 Client.maximum("age")
 ```
 
-For options, please see the parent section, [Calculations](#calculations).
+可用的選項請參考[計算](#calculations)一節。
 
-### Sum
 
-If you want to find the sum of a field for all records in your table you can call the `sum` method on the class that relates to the table. This method call will look something like this:
+### 22.5 Sum（總和）
+
+若要找出資料表特定欄位所有記錄的總和，可以用`sum`：
 
 ```ruby
 Client.sum("orders_count")
 ```
 
-For options, please see the parent section, [Calculations](#calculations).
+可用的選項請參考[計算](#calculations)一節。
 
-Running EXPLAIN
+
+23 執行 EXPLAIN 
 ---------------
 
-You can run EXPLAIN on the queries triggered by relations. For example,
+您可以在由 relation 觸發的查詢上執行 EXPLAIN。例如：
+
 
 ```ruby
 User.where(id: 1).joins(:articles).explain
 ```
 
-may yield
+在 MySQL 與 MariaDB 下會輸出：
 
 ```
 EXPLAIN for: SELECT `users`.* FROM `users` INNER JOIN `articles` ON `articles`.`user_id` = `users`.`id` WHERE `users`.`id` = 1
@@ -1948,11 +2016,9 @@ EXPLAIN for: SELECT `users`.* FROM `users` INNER JOIN `articles` ON `articles`.`
 2 rows in set (0.00 sec)
 ```
 
-under MySQL and MariaDB.
 
-Active Record performs a pretty printing that emulates that of the
-corresponding database shell. So, the same query running with the
-PostgreSQL adapter would yield instead
+Active Record 會根據所使用的資料庫的 shell 來印出。所以，相同的查詢在 PostegreSQL 會輸出：
+
 
 ```
 EXPLAIN for: SELECT "users".* FROM "users" INNER JOIN "articles" ON "articles"."user_id" = "users"."id" WHERE "users"."id" = 1
@@ -1967,15 +2033,14 @@ EXPLAIN for: SELECT "users".* FROM "users" INNER JOIN "articles" ON "articles"."
 (6 rows)
 ```
 
-Eager loading may trigger more than one query under the hood, and some queries
-may need the results of previous ones. Because of that, `explain` actually
-executes the query, and then asks for the query plans. For example,
+Eager loading 可能會觸發多筆查詢，而某些查詢會需要先前查詢的結果。因此，`explain`會實際執行該查詢，並詢問要查詢哪一個，例如：
+
 
 ```ruby
 User.where(id: 1).includes(:articles).explain
 ```
 
-yields
+在 MySQL 與 MariaDB 環境下會輸出：
 
 ```
 EXPLAIN for: SELECT `users`.* FROM `users`  WHERE `users`.`id` = 1
@@ -2008,12 +2073,10 @@ EXPLAIN for: SELECT `articles`.* FROM `articles`  WHERE `articles`.`user_id` IN 
 1 row in set (0.00 sec)
 ```
 
-under MySQL and MariaDB.
 
-### Interpreting EXPLAIN
+### 23.1 解讀 EXPLAIN
 
-Interpretation of the output of EXPLAIN is beyond the scope of this guide. The
-following pointers may be helpful:
+解讀 EXPLAIN 的輸出不在此篇的範疇內，若想更深入了解請查閱以下幾篇：
 
 * SQLite3: [EXPLAIN QUERY PLAN](http://www.sqlite.org/eqp.html)
 
